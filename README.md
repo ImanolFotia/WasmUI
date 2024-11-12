@@ -1,5 +1,5 @@
 ## Dependencies
-    * clang
+* clang
 
 ## Build
 
