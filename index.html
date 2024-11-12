@@ -1,38 +1,12 @@
 <!DOCTYPE html>
 <html>
-    <header></header>
-    <body>
-	    <canvas></canvas>
-	    <h2 id="result"></h2>
-    </body>
+<head>
+	<script type="text/javascript" src="main.js"></script>
+</head>
 
-    <script type="module">
-	var sum;
-	var hello;
+<body>
+	<h2 id="hello"></h2>
+	<canvas id="main_canvas"></canvas>
+</body>
 
-	function getString(buffer, offset) {
-		const str_buffer = new Uint32Array(buffer, offset, 2)
-		return new TextDecoder("utf8").decode(new Uint8Array(buffer, str_buffer[0], str_buffer[1]))
-	}
-	async function init() {
-		const {instance} = await WebAssembly.instantiateStreaming(fetch("sum.wasm"),{ "env": {"log": (heap_base) => {
-			const buffer = instance.exports.memory.buffer;
-			const str = getString(buffer, heap_base);
-			console.log(str)
-		}}})
-		
-		const heap_base = instance.exports.__heap_base.value;
-		var result = document.getElementById("result")
-		sum = instance.exports.sum;
-		hello = instance.exports.hello;
-		instance.exports.test();
-		result.textContent = "40 + 29 is: " + sum(40, 29)
-		const buffer = instance.exports.memory.buffer;
-		const res = hello(heap_base)
-		//console.log(res)
-		let str = getString(buffer, heap_base)
-		console.log(str);
-	}
-	init()
-    </script>
 </html>

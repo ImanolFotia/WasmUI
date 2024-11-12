@@ -1,14 +1,12 @@
-#!/bin/bash
+#!/bin/sh
 
-CC:=clang
 CXX:=clang++
-LD:=wasm-ld
 
-LD_FLAGS:=--target=wasm32 -nostdlib -Wl,--no-entry -fno-builtin
-CXX_FLAGS:=-Wl,--export-all,--export=__heap_base -Wl,--allow-undefined
+LD_FLAGS:=--target=wasm32 --no-standard-libraries -Wl,--no-entry -fno-builtin
+CXX_FLAGS:=-Wl,--export-all,--export=__heap_base -Wl,--allow-undefined -O2
 
-all: sum.wasm
+all: test.wasm
 
-sum.wasm:
-	$(CXX) $(LD_FLAGS) $(CXX_FLAGS) -o $@ sum.cpp
+test.wasm:
+	$(CXX) $(LD_FLAGS) $(CXX_FLAGS) -o $@ test.cpp
 
