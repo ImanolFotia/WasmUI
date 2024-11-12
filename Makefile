@@ -7,6 +7,7 @@ CXX_FLAGS:=-Wl,--export-all,--export=__heap_base -Wl,--allow-undefined -O2
 
 all: test
 
-test:
+test: 
+	@mkdir -p wasm 
 	$(CXX) $(LD_FLAGS) $(CXX_FLAGS) -o wasm/$@.wasm cpp/$@.cpp
 
