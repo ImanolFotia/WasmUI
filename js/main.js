@@ -43,7 +43,7 @@ async function init(wasmPath) {
 }
 
 document.addEventListener('readystatechange', () => {
-    if (document.readyState == 'complete') init("../wasm/test.wasm");
+    if (document.readyState == 'complete') init("/wasm/test.wasm");
 });
 
 window.onload = () => {
@@ -51,6 +51,6 @@ window.onload = () => {
 
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker
-            .register('./sw.js');
+            .register('./js/sw.js');
     }
 }
