@@ -19,84 +19,105 @@ var PrimitiveTopologyMap = [
     { "triangle-strip": 4 },
 ];
 
+var LoadOpName = [
+    "clear",
+    "load",
+
+];
+
+var LoadOpMap = [
+    { "clear": 0 },
+    { "load": 1 },
+];
+
+var StoreOpName = [
+    "store",
+    "discard"
+];
+
+var StoreOpMap = [
+    { "store": 0 },
+    { "discard": 1 },
+];
+
 
 var TextureFormatName = [
-    "R8Unorm",
-    "R8Snorm",
-    "R8Uint",
-    "R8Sint",
-    "R16Uint",
-    "R16Sint",
-    "R16Unorm",
-    "R16Snorm",
-    "R16Float",
-    "Rg8Unorm",
-    "Rg8Snorm",
-    "Rg8Uint",
-    "Rg8Sint",
-    "R32Uint",
-    "R32Sint",
-    "R32Float",
-    "Rg16Uint",
-    "Rg16Sint",
-    "Rg16Unorm",
-    "Rg16Snorm",
-    "Rg16Float",
-    "Rgba8Unorm",
-    "Rgba8UnormSrgb",
-    "Rgba8Snorm",
-    "Rgba8Uint",
-    "Rgba8Sint",
-    "Bgra8Unorm",
-    "Bgra8UnormSrgb",
-    "Rgb9e5Ufloat",
-    "Rgb10a2Uint",
-    "Rgb10a2Unorm",
-    "Rg11b10Ufloat",
-    "Rg32Uint",
-    "Rg32Sint",
-    "Rg32Float",
-    "Rgba16Uint",
-    "Rgba16Sint",
-    "Rgba16Unorm",
-    "Rgba16Snorm",
-    "Rgba16Float",
-    "Rgba32Uint",
-    "Rgba32Sint",
-    "Rgba32Float",
-    "Stencil8",
-    "Depth16Unorm",
-    "Depth24Plus",
-    "Depth24PlusStencil8",
-    "Depth32Float",
-    "Depth32FloatStencil8",
-    "NV12",
-    "Bc1RgbaUnorm",
-    "Bc1RgbaUnormSrgb",
-    "Bc2RgbaUnorm",
-    "Bc2RgbaUnormSrgb",
-    "Bc3RgbaUnorm",
-    "Bc3RgbaUnormSrgb",
-    "Bc4RUnorm",
-    "Bc4RSnorm",
-    "Bc5RgUnorm",
-    "Bc5RgSnorm",
-    "Bc6hRgbUfloat",
-    "Bc6hRgbFloat",
-    "Bc7RgbaUnorm",
-    "Bc7RgbaUnormSrgb",
-    "Etc2Rgb8Unorm",
-    "Etc2Rgb8UnormSrgb",
-    "Etc2Rgb8A1Unorm",
-    "Etc2Rgb8A1UnormSrgb",
-    "Etc2Rgba8Unorm",
-    "Etc2Rgba8UnormSrgb",
-    "EacR11Unorm",
-    "EacR11Snorm",
-    "EacRg11Unorm",
-    "EacRg11Snorm",
-    "AstcBlock",
-    "AstcChannel"
+    "r8unorm",
+    "r8snorm",
+    "r8uint",
+    "r8sint",
+    "r16uint",
+    "r16sint",
+    "r16unorm",
+    "r16snorm",
+    "r16float",
+    "rg8unorm",
+    "rg8snorm",
+    "rg8uint",
+    "rg8sint",
+    "r32uint",
+    "r32sint",
+    "r32float",
+    "rg16uint",
+    "rg16sint",
+    "rg16unorm",
+    "rg16snorm",
+    "rg16float",
+    "rgba8unorm",
+    "rgba8unormsrgb",
+    "rgba8snorm",
+    "rgba8uint",
+    "rgba8sint",
+    "bgra8unorm",
+    "bgra8unormsrgb",
+    "rgb9e5ufloat",
+    "rgb10a2uint",
+    "rgb10a2unorm",
+    "rg11b10ufloat",
+    "rg32uint",
+    "rg32sint",
+    "rg32float",
+    "rgba16uint",
+    "rgba16sint",
+    "rgba16unorm",
+    "rgba16snorm",
+    "rgba16float",
+    "rgba32uint",
+    "rgba32sint",
+    "rgba32float",
+    "stencil8",
+    "depth16unorm",
+    "depth24plus",
+    "depth24plusstencil8",
+    "depth32float",
+    "depth32floatstencil8",
+    "nv12",
+    "bc1rgbaunorm",
+    "bc1rgbaunormsrgb",
+    "bc2rgbaunorm",
+    "bc2rgbaunormsrgb",
+    "bc3rgbaunorm",
+    "bc3rgbaunormsrgb",
+    "bc4runorm",
+    "bc4rsnorm",
+    "bc5rgunorm",
+    "bc5rgsnorm",
+    "bc6hrgbufloat",
+    "bc6hrgbfloat",
+    "bc7rgbaunorm",
+    "bc7rgbaunormsrgb",
+    "etc2rgb8unorm",
+    "etc2rgb8unormsrgb",
+    "etc2rgb8a1unorm",
+    "etc2rgb8a1unormsrgb",
+    "etc2rgba8unorm",
+    "etc2rgba8unormsrgb",
+    "eacr11unorm",
+    "eacr11snorm",
+    "eacrg11unorm",
+    "eacrg11snorm",
+    "astcblock",
+    "astcchannel"
 ];
 var iota = 0;
 var TextureFormatMap = {
@@ -177,18 +198,171 @@ var TextureFormatMap = {
     astcblock: iota++,
     astcchannel: iota++
 };
+iota = 0;
 
 const PipelineInfoSize = 6;
+const RenderPassDescriptorSize = 7;
+
+let wgpuGetDevice = function () {
+    return GlobalGPUContext.register(GlobalGPUContext["device"])
+}
+
+let wgpuCreateRenderPipeline = function (device_id, pipelineInfo) {
+    const device = GlobalGPUContext.get(device_id);
+    const creation_info = getPipelineCreationInfo(pipelineInfo);
+    console.log(device)
+    console.log(creation_info)
+    return GlobalGPUContext.register(device.createRenderPipeline(
+        {
+            layout: 'auto',
+            vertex: { module: GlobalGPUContext.get(creation_info.vertex.module) },
+            fragment: {
+                module: GlobalGPUContext.get(creation_info.fragment.module),
+                targets: creation_info.fragment.targets
+            },
+            primitive: { topology: creation_info.topology, },
+        }
+    ));
+}
+
+let wgpuGetPreferredCanvasFormat = function () {
+    return TextureFormatMap[navigator.gpu.getPreferredCanvasFormat().toString()]
+}
+
+let wgpuCreateShaderModule = function (device_id, code) {
+    const code_str = getString(code);
+    const device = GlobalGPUContext.get(device_id);
+    if (device === undefined || device === null) { console.error("device is null"); return -1; }
+    return GlobalGPUContext.register(device.createShaderModule({
+        code: code_str,
+    }));
+}
+
+let wgpuCreateCommandEncoder = function (device) {
+    return GlobalGPUContext.register(GlobalGPUContext.get(device).createCommandEncoder());
+}
+
+let wgpuSwapChainGetCurrentTextureView = function () {
+    return GlobalGPUContext.register(GlobalGPUContext["context"].getCurrentTexture().createView());
+}
+
+let wgpuCommandEncoderBeginRenderPass = function (encoder_id, renderPassDescriptor) {
+    var descriptor = getRenderPassDescriptor(renderPassDescriptor);
+    var encoder = GlobalGPUContext.get(encoder_id);
+    return GlobalGPUContext.register(encoder.beginRenderPass(descriptor));
+}
+
+let wgpuCommandEncoderSetPipeline = function (encoder_id, pipeline_id) {
+    var encoder = GlobalGPUContext.get(encoder_id);
+    var pipeline = GlobalGPUContext.get(pipeline_id);
+    encoder.setPipeline(pipeline);
+}
+
+let wgpuCommandEncoderDraw = function (encoder_id, count) {
+    var encoder = GlobalGPUContext.get(encoder_id);
+    encoder.draw(count);
+}
+
+let wgpuCommandEncoderEnd = function (encoder_id) {
+    var encoder = GlobalGPUContext.get(encoder_id);
+    encoder.end();
+}
+
+let wgpuDeviceGetQueue = function (device_id) {
+    return GlobalGPUContext.register(GlobalGPUContext.get(device_id).queue);
+}
+
+let wgpuCommandEncoderFinish = function (encoder) {
+    let commandEncoder = GlobalGPUContext.get(encoder)
+    return GlobalGPUContext.register(commandEncoder.finish());
+}
+
+let wgpuTextureViewRelease = function (texture_id) {
+    GlobalGPUContext.release(texture_id)
+}
+
+let wgpuCommandEncoderRelease = function (encoder) {
+    GlobalGPUContext.release(encoder)
+}
+
+let wgpuRenderPassEncoderRelease = function (renderPass) {
+    GlobalGPUContext.release(renderPass)
+}
+
+let wgpuQueueSubmit = function (queue_id, count, commands) {
+    let queue = GlobalGPUContext.get(queue_id);
+    let command = GlobalGPUContext.get(commands);
+    queue.submit([command]);
+}
+
+var WasmContext = {}
+
+var GlobalGPUContext = {
+    objects: {},
+    currentId: 1,
+
+    next_free: function () {
+        for (var [k, o] of Object.entries(this.objects)) {
+            if (k != 0 && o == undefined) {
+                return k
+            }
+        }
+        return 0;
+    },
+    register: function (obj) {
+        let wrapper = {};
+        var free_id = this.next_free()
+        var id = free_id == 0 ? this.currentId++ : free_id;
+        wrapper.refcount = 1;
+        wrapper.object = obj;
+        this.objects[id] = wrapper
+        return id;
+    },
+    get: function (id) {
+        if (id === 0) return undefined;
+        return this.objects[id].object;
+    },
+    reference: function (id) {
+        if (id === 0) return;
+        this.objects[id].refcount++;
+    },
+    release: function (id) {
+        if (id === 0) return;
+        if (this.objects[id].refcount <= 0) return;
+        this.objects[id].refcount--;
+        if (this.objects[id].refcount <= 0) delete this.objects[id];
+    },
+}
+
+async function initWebGpu() {
+
+    const canvas = document.querySelector('canvas');
+    if (canvas === null) {
+        console.error("canvas does not exist...");
+    }
+    const width = window.outerWidth;
+    const height = window.outerHeight;
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext('webgpu');
+
+    GlobalGPUContext["context"] = ctx;
+
+    const adapter = await navigator.gpu?.requestAdapter();
+    return await adapter.requestDevice();
+}
+
 
 var getPipelineCreationInfo = function (offset) {
     const mem = getPointer(offset, PipelineInfoSize);
     return {
-        layout: mem[0]== 255 ? 'auto' : '',
+        layout: mem[0] == 255 ? 'auto' : '',
         vertex: { module: mem[1] },
         fragment: {
             module: mem[2],
             targets: [{
-                format: getPointer(mem[3], mem[4])[0],
+                format: TextureFormatName[getPointer(mem[3], mem[4])[0]],
             }]
         },
         primitive: {
@@ -197,79 +371,27 @@ var getPipelineCreationInfo = function (offset) {
     };
 }
 
+var getRenderPassDescriptor = function (offset) {
+    const mem = getPointer(offset, RenderPassDescriptorSize);
+    return {
+        colorAttachments: [{
+            view: GlobalGPUContext.get(mem[0]),
+            clearValue: [mem[1], mem[2], mem[3], mem[4]],
+            loadOp: LoadOpName[mem[5]],
+            storeOp: StoreOpName[mem[6]]
+        }]
+    };
+}
 
-let nativeWebGPU = function () {
+var getCommands = function (count, offset) {
+    const mem = getPointer(offset, RenderPassDescriptorSize);
+    return {
+        colorAttachments: [{
+            view: GlobalGPUContext.get(mem[0]),
+            clearValue: [mem[1], mem[2], mem[3], mem[4]],
+            loadOp: LoadOpName[mem[5]],
+            storeOp: StoreOpName[mem[6]]
+        }]
+    };
 
-    const device = GlobalGPUContext["device"];
-    const context = GlobalGPUContext["context"];
-
-    const presentationFormat = navigator.gpu.getPreferredCanvasFormat();
-    console.log(presentationFormat)
-
-    const triangleVertWGSL = "@vertex \
-                                fn main(\
-                                @builtin(vertex_index) VertexIndex : u32\
-                                ) -> @builtin(position) vec4f {\
-                                var pos = array<vec2f, 3>(\
-                                    vec2(0.0, 0.5),\
-                                    vec2(-0.5, -0.5),\
-                                    vec2(0.5, -0.5)\
-                                );\
-                                return vec4f(pos[VertexIndex], 0.0, 1.0);\
-                                }";
-
-    const redFragWGSL = "@fragment\
-                         fn main() -> @location(0) vec4f {\
-                         return vec4(1.0, 0.0, 0.0, 1.0);\
-                         }";
-
-    const pipeline = GlobalGPUContext.get(4).object;
-/*
-    const pipeline = device.createRenderPipeline({
-        layout: 'auto',
-        vertex: {
-            module: device.createShaderModule({
-                code: triangleVertWGSL,
-            }),
-        },
-        fragment: {
-            module: device.createShaderModule({
-                code: redFragWGSL,
-            }),
-            targets: [
-                {
-                    format: presentationFormat,
-                },
-            ],
-        },
-        primitive: {
-            topology: 'triangle-list',
-        },
-    });*/
-
-    function frame() {
-        const commandEncoder = device.createCommandEncoder();
-        var textureView = context.getCurrentTexture().createView();
-
-        const renderPassDescriptor = {
-            colorAttachments: [
-                {
-                    view: textureView,
-                    clearValue: [0, 0, 0, 0], // Clear to transparent
-                    loadOp: 'clear',
-                    storeOp: 'store',
-                },
-            ],
-        };
-
-        const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
-        passEncoder.setPipeline(pipeline);
-        passEncoder.draw(3);
-        passEncoder.end();
-
-        device.queue.submit([commandEncoder.finish()]);
-        requestAnimationFrame(frame);
-    }
-
-    requestAnimationFrame(frame);
 }
