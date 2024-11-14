@@ -1,18 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
 	<title>Hello World</title>
-	<link rel="icon" href="media/favicon.ico" type="image/x-icon" />  
+	<link rel="icon" href="media/favicon.ico" type="image/x-icon" />
 	<link rel="manifest" href="manifest.json">
 	<link rel="stylesheet" href="css/style.css">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<script type="text/javascript" src="js/wgpu.js"></script>
-	
+
 </head>
 
 <body>
-	<canvas id="main_canvas"></canvas>
-	<script type="text/javascript" src="js/main.js"></script>
+
+	<main>
+		<h2>WebGPU Samples</h2>
+		<a href="/samples/hello-triangle/index.html">Hello triangle</a>
+		<script type="text/javascript" src="js/main.js"></script>
+	</main>
+
 </body>
+
+<script>
+
+	window.onload = () => {
+		'use strict';
+		if ('serviceWorker' in navigator) {
+			navigator.serviceWorker
+				.register('./js/sw.js');
+		}
+	};
+
+</script>
 
 </html>
