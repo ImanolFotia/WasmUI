@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<title>Hello Triangle</title>
+	<link rel="icon" href="../../media/favicon.ico" type="image/x-icon" />
+	<link rel="manifest" href="../../manifest.json">
+	<link rel="stylesheet" href="../../css/style.css">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<script type="text/javascript" src="../../js/wgpu.js"></script>
+
+</head>
+
+<body>
+	<canvas id="main_canvas"></canvas>
+	<script type="text/javascript" src="../../js/main.js"></script>
+</body>
+
+<script>
+
+	window.onload = () => {
+		init("/wasm/hello-triangle/hello-triangle.wasm");
+	};
+
+</script>
+
+</html>
