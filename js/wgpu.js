@@ -348,7 +348,7 @@ async function initWebGpu() {
     const adapter = await navigator.gpu.requestAdapter().catch((err) => {
             WasmContext.adapterAvailable = false;
     })
-    if(adapter === undefined) { WasmContext.adapterAvailable = false; return undefined}
+    if(adapter === undefined || adapter === null) { WasmContext.adapterAvailable = false; return undefined}
     return await adapter.requestDevice();
 }
 
