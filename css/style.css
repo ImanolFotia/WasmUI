@@ -10,7 +10,9 @@ main {
     display: none;
     padding: 10px;
 }
-
+a {
+    color: #3391ff;
+}
 .error-message {
   align-items: center;
   justify-content: center;
