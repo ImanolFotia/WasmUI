@@ -66,6 +66,7 @@ void render_loop(float dt) {
   CommandEncoderEnd(pass);
   auto finish = CommandEncoderFinish(encoder, nullptr);
   QueueSubmit(queue, 1, finish);
+  
   RenderCommandBufferRelease(finish);
   CommandEncoderRelease(encoder);
   TextureViewRelease(textureView);

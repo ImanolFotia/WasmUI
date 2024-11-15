@@ -210,8 +210,6 @@ let wgpuGetDevice = function () {
 let wgpuCreateRenderPipeline = function (device_id, pipelineInfo) {
     const device = GlobalGPUContext.get(device_id);
     const creation_info = getPipelineCreationInfo(pipelineInfo);
-    console.log(device)
-    console.log(creation_info)
     return GlobalGPUContext.register(device.createRenderPipeline(
         {
             layout: 'auto',
