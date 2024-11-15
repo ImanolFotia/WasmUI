@@ -55,7 +55,7 @@ async function init(wasmPath) {
     initWebGpu().then(async function (device) {
 
         if(device === undefined) {
-            document.getElementById("not_available").style.display = 'block';
+            document.getElementById("not_available").style.display = 'flex';
             document.querySelector('canvas').style.display = 'none';
             WasmContext.deviceAvailable = false;
             return;
