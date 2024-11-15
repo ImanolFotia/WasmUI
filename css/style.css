@@ -5,11 +5,11 @@ html, body, canvas {
 }
 
 main {
+    display: none;
     padding: 10px;
 }
 
 .error-message {
-    display: flex;
   align-items: center;
   justify-content: center;
   height: 100vh;
