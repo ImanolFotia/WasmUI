@@ -12,10 +12,10 @@
 </head>
 
 <body>
-	<script type="text/javascript" src="../../js/wasm-wgpu.js"></script>
-	<main class="error-message">
+	<script type="text/javascript" src="../../js/main.js"></script>
+	<main id="not_available" class="error-message" style="display: none;">
 		<h1 style="font-size: 45px;">Oops...</h1>
-		<p id="not_available" style="display: none;" >Looks like WebGPU is not available on this browser, but don't worry let's try to enable it!</p>
+		<p  >Looks like WebGPU is not available on this browser, but don't worry let's try to enable it!</p>
 		<h2>Chrome, and chromium based browsers (Brave, Edge)</h2>
 		<p>Enable the flag <code>chrome://flags/#enable-unsafe-webgpu</code>, and if on Linux launch with <code>--enable-features=Vulkan</code></p>
 		<h2>Firefox</h2>
