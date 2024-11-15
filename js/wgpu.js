@@ -298,7 +298,10 @@ let wgpuQueueSubmit = function (queue_id, count, commands) {
     queue.submit([command]);
 }
 
-var WasmContext = {}
+var WasmContext = {
+    adapterAvailable: true,
+    deviceAvailable: true
+}
 
 var GlobalGPUContext = {
     objects: {},
@@ -342,7 +345,10 @@ async function initWebGpu() {
 
     GlobalGPUContext["context"] = ctx;
 
-    const adapter = await navigator.gpu?.requestAdapter();
+    const adapter = await navigator.gpu.requestAdapter().catch((err) => {
+            WasmContext.adapterAvailable = false;
+    })
+    if(adapter === undefined) { WasmContext.adapterAvailable = false; return undefined}
     return await adapter.requestDevice();
 }
 

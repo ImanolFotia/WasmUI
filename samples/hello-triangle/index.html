@@ -13,7 +13,14 @@
 
 <body>
 	<canvas id="main_canvas"></canvas>
-	<script type="text/javascript" src="../../js/main.js"></script>
+	<script type="text/javascript" src="../../js/wasm-wgpu.js"></script>
+	<main class="error-message">
+		<h1>Oops...</h1>
+		<p id="not_available" style="display: none;" >Looks like WebGPU is not available on this browser, but don't worry let's try to enable it!</p>
+		<h3>Chrome, and chromium based browsers (Brave, Edge)</h3>
+		
+		<p>check here for ways to enable it: <a href="https://github.com/gpuweb/gpuweb/wiki/Implementation-Status">https://github.com/gpuweb/gpuweb/wiki/Implementation-Status</a></p>
+	</main>
 </body>
 
 <script>
