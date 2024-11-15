@@ -333,8 +333,8 @@ async function initWebGpu() {
     if (canvas === null) {
         console.error("canvas does not exist...");
     }
-    const width = window.outerWidth;
-    const height = window.outerHeight;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
     canvas.width = width;
     canvas.height = height;
 
