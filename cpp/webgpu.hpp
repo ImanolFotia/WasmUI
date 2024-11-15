@@ -48,6 +48,7 @@ void wgpuQueueSubmit(size_t, size_t, size_t);
 void wgpuCommandEncoderRelease(size_t);
 void wgpuTextureViewRelease(size_t);
 void wgpuRenderPassEncoderRelease(size_t);
+void wgpuRenderCommandBufferRelease(size_t);
 }
 } // namespace imports
 
@@ -101,6 +102,10 @@ static void CommandEncoderRelease(size_t encoder) {
 
 static void RenderPassEncoderRelease(size_t renderPass) {
   imports::wgpuRenderPassEncoderRelease(renderPass);
+}
+
+static void RenderCommandBufferRelease(size_t commandBuffer) {
+  imports::wgpuRenderCommandBufferRelease(commandBuffer);
 }
 
 } // namespace wgpu
