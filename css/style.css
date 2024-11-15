@@ -1,7 +1,9 @@
 html, body, canvas {
     margin: 0;
     padding: 0;
-    display: block
+    display: block;
+    color: white;
+    background-color: #181818;
 }
 
 main {
