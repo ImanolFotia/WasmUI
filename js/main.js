@@ -44,6 +44,7 @@ function createEnvironment() {
         "wgpuTextureViewRelease": wgpuTextureViewRelease,
         "wgpuCommandEncoderRelease": wgpuCommandEncoderRelease,
         "wgpuRenderPassEncoderRelease": wgpuRenderPassEncoderRelease,
+        "wgpuRenderCommandBufferRelease": wgpuRenderCommandBufferRelease,
         "wgpuQueueSubmit": wgpuQueueSubmit,
         "request_animation_frame": request_animation_frame,
         "trunc": Math.trunc

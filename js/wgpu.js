@@ -289,6 +289,11 @@ let wgpuRenderPassEncoderRelease = function (renderPass) {
     GlobalGPUContext.release(renderPass)
 }
 
+let wgpuRenderCommandBufferRelease = function(commandBuffer) {
+    GlobalGPUContext.release(commandBuffer);
+
+}
+
 let wgpuQueueSubmit = function (queue_id, count, commands) {
     let queue = GlobalGPUContext.get(queue_id);
     let command = GlobalGPUContext.get(commands);
@@ -300,19 +305,9 @@ var WasmContext = {}
 var GlobalGPUContext = {
     objects: {},
     currentId: 1,
-
-    next_free: function () {
-        for (var [k, o] of Object.entries(this.objects)) {
-            if (k != 0 && o == undefined) {
-                return k
-            }
-        }
-        return 0;
-    },
     register: function (obj) {
         let wrapper = {};
-        var free_id = this.next_free()
-        var id = free_id == 0 ? this.currentId++ : free_id;
+        var id = this.currentId++;
         wrapper.refcount = 1;
         wrapper.object = obj;
         this.objects[id] = wrapper
