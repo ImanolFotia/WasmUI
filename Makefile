@@ -12,4 +12,5 @@ all: hello-triangle
 hello-triangle: 
 	@mkdir -p wasm/$@
 	$(CXX) $(LD_FLAGS) $(CXX_FLAGS) $(INCLUDE_DIRS) -o wasm/$@/$@.wasm samples/$@/main.cpp
+	@cp wasm/$@/$@.wasm  samples/$@/$@.wasm
 
