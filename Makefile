@@ -3,7 +3,7 @@
 CXX:=clang++
 
 LD_FLAGS:=--target=wasm32 --no-standard-libraries -Wl,--no-entry -fno-builtin
-CXX_FLAGS:=-Wl,--export-all,--export=__heap_base -Wl,--allow-undefined -Wl,--export-table -O2
+CXX_FLAGS:=-Wl,--export-all,--export=__heap_base -Wl,--allow-undefined -Wl,--export-table -O2 -Wall -Werror
 
 INCLUDE_DIRS:=-I./cpp
 
