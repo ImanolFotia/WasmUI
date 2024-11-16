@@ -12,6 +12,16 @@ extern "C" void render_callback(float dt) { print("hello!"); }
 
 float fmodf(float x, float y) { return x - trunc(x / y) * y; }
 
+float min(float a, float b) {
+  if(a > b) return a;
+  return b;
+}
+
+float max(float a, float b) {
+  if(a > b) return b;
+  return a;
+}
+
 const char *vertexCode =
     R"(
     struct VertexOut {
@@ -47,16 +57,30 @@ const char *fragmentCode =
         return fsInput.color;
       })";
 
-size_t device, pipeline, queue;
-
 using namespace wgpu;
 
-void render_loop(float dt) {
-  auto encoder = CreateCommandEncoder(device);
+Device device{};
+Pipeline pipeline{};
+Queue queue{};
 
-  auto textureView = SwapChainGetCurrentTextureView();
+void render_loop(size_t dt) {
+  char str[5];
 
-  auto pass = CommandEncoderBeginRenderPass(encoder,
+  str[0] = '0' + fmodf((dt / 1000), 10);
+  str[1] = '0' + fmodf((dt / 100), 10);
+  str[2] = '0' +  fmodf(dt / 10, 10);
+  str[3] = '0' + fmodf(dt, 10);
+  str[4] = 0;
+
+  print(str);
+  //float t = (float)dt;
+  //(void)t;
+
+  CommandEncoder encoder = CreateCommandEncoder(device);
+
+  TextureView textureView = SwapChainGetCurrentTextureView();
+
+  RenderPass pass = CommandEncoderBeginRenderPass(encoder,
                                                {.textureView = textureView,
                                                 .clearValue = {0, 0, 0, 1},
                                                 .loadOp = LoadOp::CLEAR,
@@ -64,24 +88,24 @@ void render_loop(float dt) {
   CommandEncoderSetPipeline(pass, pipeline);
   CommandEncoderDraw(pass, 3);
   CommandEncoderEnd(pass);
-  auto finish = CommandEncoderFinish(encoder, nullptr);
+  CommandBuffer finish = CommandEncoderFinish(encoder, nullptr);
   QueueSubmit(queue, 1, finish);
-  
+
   RenderCommandBufferRelease(finish);
   CommandEncoderRelease(encoder);
   TextureViewRelease(textureView);
   RenderPassEncoderRelease(pass);
 };
 
-export auto wasm_main() -> void {
+extern "C" auto wasm_main() -> void {
 
   if (device = GetDevice(); device == 0) {
     print("Error opening device.");
     return;
   }
 
-  auto fragmentShader = CreateShaderModule(device, fragmentCode);
-  auto vertexShader = CreateShaderModule(device, vertexCode);
+  ShaderModule fragmentShader = CreateShaderModule(device, fragmentCode);
+  ShaderModule vertexShader = CreateShaderModule(device, vertexCode);
   auto preferredFormat = GetPreferredCanvasFormat();
 
   RenderTarget target;
@@ -99,5 +123,5 @@ export auto wasm_main() -> void {
 
   queue = DeviceGetQueue(device);
 
-  request_animation_frame((void *)render_loop);
+  request_animation_frame((void*)render_loop);
 }
