@@ -5,106 +5,115 @@
 
 namespace wgpu {
 
-struct Device;
-struct Queue;
-struct TextureView;
-struct Texture;
+#define CREATE_HANDLE(object) typedef struct object##_t *object;
 
+CREATE_HANDLE(Device);
+CREATE_HANDLE(Queue);
+CREATE_HANDLE(TextureView);
+CREATE_HANDLE(Texture);
+CREATE_HANDLE(Pipeline);
+CREATE_HANDLE(RenderPass);
+CREATE_HANDLE(CommandEncoder);
+CREATE_HANDLE(CommandBuffer);
+CREATE_HANDLE(ShaderModule);
 struct RenderTarget {
   size_t format;
 };
 
 struct PipelineInfo {
   size_t layout;
-  size_t vertex;
-  size_t fragment;
+  ShaderModule vertex;
+  ShaderModule fragment;
   RenderTarget *targets;
   size_t targetCount;
   size_t primitiveTopology;
 };
 
 struct RenderPassDescriptor {
-  size_t textureView;
+  TextureView textureView;
   size_t clearValue[4];
   size_t loadOp;
   size_t storeOp;
 };
 
+
 namespace imports {
 extern "C" {
-size_t wgpuGetDevice();
-size_t wgpuCreateShaderModule(size_t device, JsString);
+Device wgpuGetDevice();
+ShaderModule wgpuCreateShaderModule(Device device, JsString);
 size_t wgpuGetPreferredCanvasFormat();
-size_t wgpuCreateRenderPipeline(size_t, PipelineInfo);
-size_t wgpuCreateCommandEncoder(size_t);
-size_t wgpuSwapChainGetCurrentTextureView();
-size_t wgpuCommandEncoderBeginRenderPass(size_t, RenderPassDescriptor);
-void wgpuCommandEncoderSetPipeline(size_t, size_t);
-void wgpuCommandEncoderDraw(size_t, size_t);
-void wgpuCommandEncoderEnd(size_t);
-size_t wgpuDeviceGetQueue(size_t);
-size_t wgpuCommandEncoderFinish(size_t);
-void wgpuQueueSubmit(size_t, size_t, size_t);
-void wgpuCommandEncoderRelease(size_t);
-void wgpuTextureViewRelease(size_t);
-void wgpuRenderPassEncoderRelease(size_t);
-void wgpuRenderCommandBufferRelease(size_t);
+Pipeline wgpuCreateRenderPipeline(Device, PipelineInfo);
+CommandEncoder wgpuCreateCommandEncoder(Device);
+TextureView wgpuSwapChainGetCurrentTextureView();
+RenderPass wgpuCommandEncoderBeginRenderPass(CommandEncoder,
+                                             RenderPassDescriptor);
+void wgpuCommandEncoderSetPipeline(RenderPass, Pipeline);
+void wgpuCommandEncoderDraw(RenderPass, size_t);
+void wgpuCommandEncoderEnd(RenderPass);
+Queue wgpuDeviceGetQueue(Device);
+CommandBuffer wgpuCommandEncoderFinish(CommandEncoder);
+void wgpuQueueSubmit(Queue, size_t, CommandBuffer);
+void wgpuCommandEncoderRelease(CommandEncoder);
+void wgpuTextureViewRelease(TextureView);
+void wgpuRenderPassEncoderRelease(RenderPass);
+void wgpuRenderCommandBufferRelease(CommandBuffer);
 }
 } // namespace imports
 
-static size_t GetDevice() { return imports::wgpuGetDevice(); }
-static size_t CreateShaderModule(size_t device, JsString code) {
+static Device GetDevice() { return imports::wgpuGetDevice(); }
+static ShaderModule CreateShaderModule(Device device, JsString code) {
   return imports::wgpuCreateShaderModule(device, code);
 }
 static size_t GetPreferredCanvasFormat() {
   return imports::wgpuGetPreferredCanvasFormat();
 }
-static size_t CreateRenderPipeline(size_t device, PipelineInfo info) {
+static Pipeline CreateRenderPipeline(Device device, PipelineInfo info) {
   return imports::wgpuCreateRenderPipeline(device, info);
 }
 
-static size_t DeviceGetQueue(size_t device) {
+static Queue DeviceGetQueue(Device device) {
   return imports::wgpuDeviceGetQueue(device);
 }
-static size_t CreateCommandEncoder(size_t device) {
+static CommandEncoder CreateCommandEncoder(Device device) {
   return imports::wgpuCreateCommandEncoder(device);
 }
-static size_t SwapChainGetCurrentTextureView() {
+static TextureView SwapChainGetCurrentTextureView() {
   return imports::wgpuSwapChainGetCurrentTextureView();
 }
-static size_t CommandEncoderBeginRenderPass(size_t encoder,
-                                            RenderPassDescriptor descriptor) {
+static RenderPass
+CommandEncoderBeginRenderPass(CommandEncoder encoder,
+                              RenderPassDescriptor descriptor) {
   return imports::wgpuCommandEncoderBeginRenderPass(encoder, descriptor);
 }
-static void CommandEncoderSetPipeline(size_t encoder, size_t pipeline) {
+static void CommandEncoderSetPipeline(RenderPass encoder, Pipeline pipeline) {
   imports::wgpuCommandEncoderSetPipeline(encoder, pipeline);
 }
-static void CommandEncoderDraw(size_t encoder, size_t count) {
+static void CommandEncoderDraw(RenderPass encoder, size_t count) {
   imports::wgpuCommandEncoderDraw(encoder, count);
 }
-static void CommandEncoderEnd(size_t encoder) {
+static void CommandEncoderEnd(RenderPass encoder) {
   imports::wgpuCommandEncoderEnd(encoder);
 }
-static size_t CommandEncoderFinish(size_t encoder, void *) {
+static CommandBuffer CommandEncoderFinish(CommandEncoder encoder, void *) {
   return imports::wgpuCommandEncoderFinish(encoder);
 }
 
-static void QueueSubmit(size_t queue, size_t count, size_t commands) {
+static void QueueSubmit(Queue queue, size_t count, CommandBuffer commands) {
   imports::wgpuQueueSubmit(queue, count, commands);
 }
 
-static void TextureViewRelease(size_t texture_view) {
+static void TextureViewRelease(TextureView texture_view) {
   imports::wgpuTextureViewRelease(texture_view);
 }
-static void CommandEncoderRelease(size_t encoder) {
+static void CommandEncoderRelease(CommandEncoder encoder) {
   imports::wgpuCommandEncoderRelease(encoder);
 }
 
-static void RenderPassEncoderRelease(size_t renderPass) {
+static void RenderPassEncoderRelease(RenderPass renderPass) {
   imports::wgpuRenderPassEncoderRelease(renderPass);
 }
 
-static void RenderCommandBufferRelease(size_t commandBuffer) {
+static void RenderCommandBufferRelease(CommandBuffer commandBuffer) {
   imports::wgpuRenderCommandBufferRelease(commandBuffer);
 }
 
