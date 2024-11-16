@@ -1,16 +1,14 @@
 #pragma once
 
-#define export extern "C"
-
 namespace {
 using size_t = unsigned long;
 
 struct vec3 {
-  union {
-    struct {
+  union impl_vec3{
+    struct vec{
       float x, y, z;
     };
-    struct {
+    struct col{
       float r, g, b;
     };
     float val[3];
