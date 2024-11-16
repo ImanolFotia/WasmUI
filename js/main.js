@@ -11,14 +11,9 @@ function wasm_print(heap_base) {
     console.log(str);
 }
 
-let clbk_index = 0;
 function request_animation_frame(clbk) {
-    if (clbk !== undefined) {
-        clbk_index = clbk
-    }
-
     function loop(time) {
-        WasmContext["vtable"].get(clbk_index)()
+        WasmContext["vtable"].get(clbk)(1569)
         window.requestAnimationFrame(loop);
     }
 
@@ -29,7 +24,6 @@ function createEnvironment() {
     return {
         "print": wasm_print,
         "wgpuGetDevice": wgpuGetDevice,
-        "wgpuQueueSubmit": GPUQueue.prototype.submit,
         "wgpuGetPreferredCanvasFormat": wgpuGetPreferredCanvasFormat,
         "wgpuCreateShaderModule": wgpuCreateShaderModule,
         "wgpuCreateRenderPipeline": wgpuCreateRenderPipeline,
@@ -65,6 +59,8 @@ async function init(wasmPath) {
 
         const { instance } = await WebAssembly.instantiateStreaming(fetch(wasmPath), {
             "env": createEnvironment()
+        }).catch(function(error) {
+            console.error(error);
         });
 
         WasmContext["vtable"] = instance.exports.__indirect_function_table
