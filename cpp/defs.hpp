@@ -2,13 +2,16 @@
 
 namespace {
 using size_t = unsigned long;
+using ssize_t = long;
+
+
 
 struct vec3 {
-  union impl_vec3{
-    struct vec{
+  union impl_vec3 {
+    struct vec {
       float x, y, z;
     };
-    struct col{
+    struct col {
       float r, g, b;
     };
     float val[3];
@@ -105,6 +108,19 @@ enum TextureFormat {
   AstcBlock,
   AstcChannel,
 
+};
+
+enum BufferUsage : size_t {
+  MAP_READ = 1,
+  MAP_WRITE = 2,
+  COPY_SRC = 4,
+  COPY_DST = 8,
+  INDEX = 16,
+  VERTEX = 32,
+  UNIFORM = 64,
+  STORAGE = 128,
+  INDIRECT = 256,
+  QUERY_RESOLVE = 512
 };
 
 } // namespace
