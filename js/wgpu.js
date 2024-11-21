@@ -1,6 +1,6 @@
 
 var getPointer = function (address, size) {
-    return new Uint32Array(WasmContext["buffer"], address, size)
+    return new Uint32Array(WasmContext["memory"], address, size)
 }
 
 var PrimitiveTopologyName = [
@@ -40,6 +40,21 @@ var StoreOpMap = [
     { "discard": 1 },
 ];
 
+
+var BufferUsageName = [
+    "map_read",
+    "map_write",
+    "copy_src",
+    "copy_dst",
+    "index",
+    "vertex",
+    "uniform",
+    "storage",
+    "indirect",
+    "query_resolve",
+    "blas_input",
+    "tlas_input"
+];
 
 var TextureFormatName = [
     "r8unorm",
@@ -202,20 +217,21 @@ iota = 0;
 
 const PipelineInfoSize = 6;
 const RenderPassDescriptorSize = 7;
+const BufferDescriptorSize = 3;
 
 let wgpuGetDevice = function () {
     return GlobalGPUContext.register(GlobalGPUContext["device"])
 }
 
 let wgpuCreateRenderPipeline = function (device_id, pipelineInfo) {
-    const device = GlobalGPUContext.get(device_id);
+    const device = GlobalGPUContext.get(device_id).object;
     const creation_info = getPipelineCreationInfo(pipelineInfo);
     return GlobalGPUContext.register(device.createRenderPipeline(
         {
             layout: 'auto',
-            vertex: { module: GlobalGPUContext.get(creation_info.vertex.module) },
+            vertex: { module: GlobalGPUContext.get(creation_info.vertex.module).object },
             fragment: {
-                module: GlobalGPUContext.get(creation_info.fragment.module),
+                module: GlobalGPUContext.get(creation_info.fragment.module).object,
                 targets: creation_info.fragment.targets
             },
             primitive: { topology: creation_info.topology, },
@@ -229,7 +245,7 @@ let wgpuGetPreferredCanvasFormat = function () {
 
 let wgpuCreateShaderModule = function (device_id, code) {
     const code_str = getString(code);
-    const device = GlobalGPUContext.get(device_id);
+    const device = GlobalGPUContext.get(device_id).object;
     if (device === undefined || device === null) { console.error("device is null"); return -1; }
     return GlobalGPUContext.register(device.createShaderModule({
         code: code_str,
@@ -237,7 +253,7 @@ let wgpuCreateShaderModule = function (device_id, code) {
 }
 
 let wgpuCreateCommandEncoder = function (device) {
-    return GlobalGPUContext.register(GlobalGPUContext.get(device).createCommandEncoder());
+    return GlobalGPUContext.register(GlobalGPUContext.get(device).object.createCommandEncoder());
 }
 
 let wgpuSwapChainGetCurrentTextureView = function () {
@@ -246,32 +262,32 @@ let wgpuSwapChainGetCurrentTextureView = function () {
 
 let wgpuCommandEncoderBeginRenderPass = function (encoder_id, renderPassDescriptor) {
     var descriptor = getRenderPassDescriptor(renderPassDescriptor);
-    var encoder = GlobalGPUContext.get(encoder_id);
+    var encoder = GlobalGPUContext.get(encoder_id).object;
     return GlobalGPUContext.register(encoder.beginRenderPass(descriptor));
 }
 
-let wgpuCommandEncoderSetPipeline = function (encoder_id, pipeline_id) {
-    var encoder = GlobalGPUContext.get(encoder_id);
-    var pipeline = GlobalGPUContext.get(pipeline_id);
+let wgpuRenderPassEncoderSetPipeline = function (encoder_id, pipeline_id) {
+    var encoder = GlobalGPUContext.get(encoder_id).object;
+    var pipeline = GlobalGPUContext.get(pipeline_id).object;
     encoder.setPipeline(pipeline);
 }
 
-let wgpuCommandEncoderDraw = function (encoder_id, count) {
-    var encoder = GlobalGPUContext.get(encoder_id);
+let wgpuRenderPassEncoderDraw = function (encoder_id, count) {
+    var encoder = GlobalGPUContext.get(encoder_id).object;
     encoder.draw(count);
 }
 
-let wgpuCommandEncoderEnd = function (encoder_id) {
-    var encoder = GlobalGPUContext.get(encoder_id);
+let wgpuRenderPassEncoderEnd = function (encoder_id) {
+    var encoder = GlobalGPUContext.get(encoder_id).object;
     encoder.end();
 }
 
 let wgpuDeviceGetQueue = function (device_id) {
-    return GlobalGPUContext.register(GlobalGPUContext.get(device_id).queue);
+    return GlobalGPUContext.register(GlobalGPUContext.get(device_id).object.queue);
 }
 
 let wgpuCommandEncoderFinish = function (encoder) {
-    let commandEncoder = GlobalGPUContext.get(encoder)
+    let commandEncoder = GlobalGPUContext.get(encoder).object
     return GlobalGPUContext.register(commandEncoder.finish());
 }
 
@@ -287,20 +303,67 @@ let wgpuRenderPassEncoderRelease = function (renderPass) {
     GlobalGPUContext.release(renderPass)
 }
 
-let wgpuRenderCommandBufferRelease = function(commandBuffer) {
+let wgpuCommandBufferRelease = function(commandBuffer) {
     GlobalGPUContext.release(commandBuffer);
 
 }
 
 let wgpuQueueSubmit = function (queue_id, count, commands) {
-    let queue = GlobalGPUContext.get(queue_id);
-    let command = GlobalGPUContext.get(commands);
+    let queue = GlobalGPUContext.get(queue_id).object;
+    let command = GlobalGPUContext.get(commands).object;
     queue.submit([command]);
 }
 
+
+let wgpuCreateBuffer = function (device_id, bufferInfo) {
+    return GlobalGPUContext.register(GlobalGPUContext.get(device_id).object.createBuffer(getBufferDescriptor(bufferInfo)));
+}
+
+let wgpuBufferGetMappedRange = function(buffer_id, offset, size) {
+    let buffer = GlobalGPUContext.get(buffer_id);
+
+    var mapped = buffer.object.getMappedRange(offset, size);
+    var ptr = WasmContext["exports"].alloc_arena(WasmContext["exports"].transfer_arena, size);
+
+    buffer.onUnmap = function() {
+        new Uint8Array(mapped).set(new Uint8Array(WasmContext["memory"], ptr, mapped.byteLength));
+        WasmContext["exports"].reset_arena(ptr);
+    }
+    
+    return ptr;
+}
+
+let wgpuBufferUnmap = function(buffer_id) {
+    let bufferWrapper = GlobalGPUContext.get(buffer_id);
+    bufferWrapper.onUnmap();
+    bufferWrapper.object.unmap();
+}
+
+let wgpuBufferMappedRangeRelease = function(buffer_range_id) {
+    return GlobalGPUContext.release(buffer_range_id);
+}
+
+let wgpuDestroyBuffer = function (buffer_id) {
+    GlobalGPUContext.get(buffer_id).object.destroy()
+    GlobalGPUContext.release(buffer_id);
+}
+
+let wgpuRenderPassEncoderSetVertexBuffer = function(encoder_id, slot, vertex_buffer_id, offset, size) {
+    let vertex_buffer = GlobalGPUContext.get(vertex_buffer_id).object;
+    let encoder = GlobalGPUContext.get(encoder_id).object;
+    encoder.setVertexBuffer(slot, vertex_buffer, offset, size);
+}
+
+
 var WasmContext = {
-    adapterAvailable: true,
-    deviceAvailable: true
+    adapterAvailable:  true,
+    deviceAvailable:   true,
+    heapViewu8:           0,
+    heapViewu16:          0,
+    heapViewu32:          0,
+    heapViewf32:          0,
+    heapView32:           0,
+    heap_max: 256*1024*1024, //max 256MB
 }
 
 var GlobalGPUContext = {
@@ -316,7 +379,7 @@ var GlobalGPUContext = {
     },
     get: function (id) {
         if (id === 0) return undefined;
-        return this.objects[id].object;
+        return this.objects[id];
     },
     reference: function (id) {
         if (id === 0) return;
@@ -374,7 +437,7 @@ var getRenderPassDescriptor = function (offset) {
     const mem = getPointer(offset, RenderPassDescriptorSize);
     return {
         colorAttachments: [{
-            view: GlobalGPUContext.get(mem[0]),
+            view: GlobalGPUContext.get(mem[0]).object,
             clearValue: [mem[1], mem[2], mem[3], mem[4]],
             loadOp: LoadOpName[mem[5]],
             storeOp: StoreOpName[mem[6]]
@@ -382,11 +445,21 @@ var getRenderPassDescriptor = function (offset) {
     };
 }
 
+var getBufferDescriptor = function(offset) {
+    const mem = getPointer(offset, BufferDescriptorSize);
+    return {
+        size: mem[0],
+        usage: mem[1],
+        mappedAtCreation: mem[2],
+    };
+
+}
+
 var getCommands = function (count, offset) {
     const mem = getPointer(offset, RenderPassDescriptorSize);
     return {
         colorAttachments: [{
-            view: GlobalGPUContext.get(mem[0]),
+            view: GlobalGPUContext.get(mem[0]).object,
             clearValue: [mem[1], mem[2], mem[3], mem[4]],
             loadOp: LoadOpName[mem[5]],
             storeOp: StoreOpName[mem[6]]
