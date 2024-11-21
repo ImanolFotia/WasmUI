@@ -85,13 +85,13 @@ void render_loop(size_t dt) {
                                                 .clearValue = {0, 0, 0, 1},
                                                 .loadOp = LoadOp::CLEAR,
                                                 .storeOp = StoreOp::STORE});
-  CommandEncoderSetPipeline(pass, pipeline);
-  CommandEncoderDraw(pass, 3);
-  CommandEncoderEnd(pass);
+  RenderPassEncoderSetPipeline(pass, pipeline);
+  RenderPassEncoderDraw(pass, 3);
+  RenderPassEncoderEnd(pass);
   CommandBuffer finish = CommandEncoderFinish(encoder, nullptr);
   QueueSubmit(queue, 1, finish);
 
-  RenderCommandBufferRelease(finish);
+  CommandBufferRelease(finish);
   CommandEncoderRelease(encoder);
   TextureViewRelease(textureView);
   RenderPassEncoderRelease(pass);

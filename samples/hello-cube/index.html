@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<title>Hello Cube</title>
+	<link rel="icon" href="../../media/favicon.ico" type="image/x-icon" />
+	<link rel="manifest" href="../../manifest.json">
+	<link rel="stylesheet" href="../../css/style.css">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<script type="text/javascript" src="../../js/wgpu.js"></script>
+
+</head>
+
+<body>
+	<script type="text/javascript" src="../../js/main.js"></script>
+	<main id="not_available" class="error-message">
+		<h1 style="font-size: 45px;">Oops...</h1>
+		<p  >Looks like WebGPU is not available on this browser, but don't worry let's try to enable it!</p>
+		<h2>Chrome, and chromium based browsers (Brave, Edge)</h2>
+		<p>Enable the flag <code>chrome://flags/#enable-unsafe-webgpu</code>, and if on Linux launch with <code>--enable-features=Vulkan</code></p>
+		<h2>Firefox</h2>
+		<p>WebGPU is enabled by default in <a href="https://nightly.mozilla.org/">Nightly</a> Firefox builds.</p>
+		<h2>Safari</h2>
+		<p> WebGPU is enabled by default in Safari Technology Preview.</p>
+		<p>If none of the previus work, check here for more ways to enable it: <a href="https://github.com/gpuweb/gpuweb/wiki/Implementation-Status">https://github.com/gpuweb/gpuweb/wiki/Implementation-Status</a></p>
+	</main>
+	<canvas id="main_canvas"></canvas>
+</body>
+
+<script>
+
+	window.onload = () => {
+		init("hello-cube.wasm");
+	};
+
+</script>
+
+</html>
