@@ -215,9 +215,34 @@ var TextureFormatMap = {
 };
 iota = 0;
 
-const PipelineInfoSize = 6;
-const RenderPassDescriptorSize = 7;
-const BufferDescriptorSize = 3;
+
+var C_STRUCT = {
+	RenderTarget: 8,
+	VertexAttribute: 24,
+	VertexBufferLayout: 24,
+	VertexState: 32,
+	BlendComponent: 24,
+	BlendState: 48,
+	ColorTargetState: 64,
+	FragmentState: 32,
+	BufferBindingLayout: 8,
+	BindGroupLayoutEntry: 32,
+	PushConstantRange: 24,
+	BindGroupLayoutDescriptor: 32,
+	PipelineLayoutDescriptor: 32,
+	PrimitiveState: 56,
+	StencilFaceState: 32,
+	DepthBiasState: 16,
+	DepthStencilState: 120,
+	MultiSampleState: 24,
+	RenderPipelineDescriptor: 288,
+	Operations: 8,
+	RenderPassColorAttachment: 40,
+	RenderPassDepthStencilAttachment: 40,
+	RenderPassTimestampWrites: 24,
+	RenderPassDescriptor: 64,
+	BufferDescriptor: 24,
+}
 
 let wgpuGetDevice = function () {
     return GlobalGPUContext.register(GlobalGPUContext["device"])
@@ -415,26 +440,55 @@ async function initWebGpu() {
     return await adapter.requestDevice();
 }
 
+var getPipelineLayoutDescriptor = function(mem) {
+    let bg_layouts = []
+    let pc_ranges = []
+    for(var i =0; i < mem[0]; i++) bg_layouts.push(getPointer(mem[1])[i])
+    for(var i =0; i < mem[2]; i++) pc_ranges.push(getPointer(mem[3])[i])
+    return {
+        bind_group_layouts: bg_layouts,
+        push_constant_ranges: pc_ranges
+    };
+}
+
+var getVertexBufferLayouts = function(mem) {
+    layouts = []
+    layouts_count = mem[3];
+    let layouts_ptr = getPointer(mem[4])
+    for(var i = 0; i < layouts_count; i++) { 
+        layouts.push( {
+            array_stride: layouts_ptr[i]
+        }
+
+        )
+    }
+    return 
+}
+
 
 var getPipelineCreationInfo = function (offset) {
-    const mem = getPointer(offset, PipelineInfoSize);
+    const mem = getPointer(offset, C_STRUCT.RenderPipelineDescriptor);
     return {
-        layout: mem[0] == 255 ? 'auto' : '',
-        vertex: { module: mem[1] },
+        layout: mem[0] == 0? 'auto' : '',
+        vertex: { 
+            module: mem[1],
+            entry_point: getString(mem[2]),
+            buffers: getVertexBufferLayouts(mem)
+        },
+        primitive: {
+            topology: PrimitiveTopologyName[mem[5]]
+        },
         fragment: {
-            module: mem[2],
+            module: mem[5],
             targets: [{
                 format: TextureFormatName[getPointer(mem[3], mem[4])[0]],
             }]
         },
-        primitive: {
-            topology: PrimitiveTopologyName[mem[5]]
-        }
     };
 }
 
 var getRenderPassDescriptor = function (offset) {
-    const mem = getPointer(offset, RenderPassDescriptorSize);
+    const mem = getPointer(offset, C_STRUCT.RenderPassDescriptor);
     return {
         colorAttachments: [{
             view: GlobalGPUContext.get(mem[0]).object,
@@ -446,7 +500,7 @@ var getRenderPassDescriptor = function (offset) {
 }
 
 var getBufferDescriptor = function(offset) {
-    const mem = getPointer(offset, BufferDescriptorSize);
+    const mem = getPointer(offset, C_STRUCT.BufferDescriptor);
     return {
         size: mem[0],
         usage: mem[1],

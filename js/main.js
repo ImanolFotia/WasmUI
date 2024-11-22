@@ -1,5 +1,9 @@
 "use strict"
 
+var Context = {
+    Debug: true
+}
+
 function getString(offset) {
     const buffer = WasmContext["memory"];
     const str_buffer = new Uint32Array(buffer, offset, 2);
@@ -32,10 +36,6 @@ function sbrk (increment)
 
 function createEnvironment() {
 
-    var stack_size = 8 * 1024 * 1024;
-    var wasmMemInitial = (((stack_size + 65536)+65535)>>16<<16) + (256 * 1024); //8716288
-    var initialMemory =  new WebAssembly.Memory({initial: wasmMemInitial>>16, maximum: WasmContext["heap_max"]>>16 });
-
     return {
         "print": wasm_print,
         "wgpuGetDevice": wgpuGetDevice,
@@ -60,9 +60,11 @@ function createEnvironment() {
         "wgpuDestroyBuffer": wgpuDestroyBuffer,
         "wgpuBufferGetMappedRange": wgpuBufferGetMappedRange,
         "wgpuBufferUnmap": wgpuBufferUnmap,
-
+        "memset": function(a, b, c){ console.log(a, b, c)},
+        "memcpy": function(a, b, c){ console.log(a, b, c)},
         "request_animation_frame": request_animation_frame,
-
+        "trunc": Math.trunc,
+/*
 	    "time": function(ptr) { var ret = (Date.now()/1000)|0; if (ptr) WasmContext["heapViewu32"][ptr>>2] = ret; return ret; },
 	    "gettimeofday": function(ptr) { var now = Date.now(); WasmContext["heapViewu32"][ptr>>2]=(now/1000)|0; WasmContext["heapViewu32"][(ptr+4)>>2]=((now % 1000)*1000)|0; },
 
@@ -78,7 +80,7 @@ function createEnvironment() {
         "powf": Math.pow,
         "cos": Math.cos,
         "cosf": Math.cos,
-        "trunc": Math.trunc,
+        "trunc": Math.trunc,*/
 /*
         "sin": env.sinf = Math.sin,
         "tan": env.tanf = Math.tan,
@@ -108,7 +110,9 @@ async function init(wasmPath) {
             env: createEnvironment(),
         }
 
-        const { instance } = await WebAssembly.instantiateStreaming(fetch(wasmPath),importObject).catch(function(error) {
+        const { instance } = await WebAssembly.instantiateStreaming(fetch(wasmPath),
+        {"env": createEnvironment()}
+    ).catch(function(error) {
             console.error(error);
         });
 
