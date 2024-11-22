@@ -9,6 +9,7 @@ struct JsCString {
 
 class JsString {
 public:
+  JsString() = default;
   JsString(const char *str) : ptr{(size_t)(str)}, length{pLength(str)} {}
   JsString(size_t str, size_t l) : ptr{str}, length{l} {}
   JsString(size_t x) : ptr{x}{
