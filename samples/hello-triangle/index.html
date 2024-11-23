@@ -30,7 +30,10 @@
 <script>
 
 	window.onload = () => {
-		init("hello-triangle.wasm");
+		if(Context.Debug)
+			init("../../wasm/hello-triangle/hello-triangle.wasm");
+		else
+			init("hello-triangle.wasm");
 	};
 
 </script>
