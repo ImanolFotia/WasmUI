@@ -1,6 +1,7 @@
 #pragma once
 
 #include "defs.hpp"
+#include "string.hpp"
 
 extern "C" {
 extern unsigned char __heap_base;
@@ -20,7 +21,7 @@ void create_arena(Arena *arena, size_t capacity) {
 }
 
 void *alloc_arena(Arena *arena, size_t size) {
-  if (size + arena->size >= arena->capacity)
+ if (size + arena->size >= arena->capacity)
     return nullptr;
   void* ptr = (char*)arena->data + arena->size;
   arena->size += size;
