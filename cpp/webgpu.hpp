@@ -26,6 +26,7 @@ CREATE_HANDLE(Buffer);
 CREATE_HANDLE(PipelineCache);
 CREATE_HANDLE(QuerySet);
 
+//#pragma pack(push, 1)
 struct RenderTarget {
   uint32_t format;
 };
@@ -207,6 +208,9 @@ struct BufferDescriptor {
   BufferUsage usage{};
   bool mappedAtCreation{};
 };
+
+
+//#pragma pack(pop)
 
 namespace imports {
 extern "C" {
