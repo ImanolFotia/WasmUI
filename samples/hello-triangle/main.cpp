@@ -1,14 +1,14 @@
 #include <string.hpp>
 #include <webgpu.hpp>
 
+
 struct TextureSize {
   int x, y, z;
 };
 
-extern "C" void print(JsString);
+extern "C" void puts(JsString);
 extern "C" void request_animation_frame(void *);
 extern "C" float trunc(float);
-extern "C" void render_callback(float dt) { print("hello!"); }
 
 float fmodf(float x, float y) { return x - trunc(x / y) * y; }
 
@@ -64,7 +64,7 @@ Pipeline pipeline{};
 Queue queue{};
 
 void render_loop(size_t dt) {
-  char str[5];
+  /*char str[5];
 
   str[0] = '0' + fmodf((dt / 1000), 10);
   str[1] = '0' + fmodf((dt / 100), 10);
@@ -72,7 +72,7 @@ void render_loop(size_t dt) {
   str[3] = '0' + fmodf(dt, 10);
   str[4] = 0;
 
-  print(str);
+  print(str);*/
   //float t = (float)dt;
   //(void)t;
 
@@ -80,11 +80,16 @@ void render_loop(size_t dt) {
 
   TextureView textureView = SwapChainGetCurrentTextureView();
 
+  RenderPassColorAttachment colorAttachment;
+  colorAttachment.view = textureView;
+  colorAttachment.clearValue = {0.0f, 0.0f, 0.0, 1.0};
+  colorAttachment.operations = {LoadOp::CLEAR, StoreOp::STORE};
+
   RenderPass pass = CommandEncoderBeginRenderPass(encoder,
-                                               {.textureView = textureView,
-                                                .clearValue = {0, 0, 0, 1},
-                                                .loadOp = LoadOp::CLEAR,
-                                                .storeOp = StoreOp::STORE});
+                                                 (RenderPassDescriptor){
+                                                  .colorAttachmentsCount = 1,
+                                                  .colorAttachments = &colorAttachment,
+                                                });
   RenderPassEncoderSetPipeline(pass, pipeline);
   RenderPassEncoderDraw(pass, 3);
   RenderPassEncoderEnd(pass);
@@ -100,7 +105,7 @@ void render_loop(size_t dt) {
 extern "C" auto wasm_main() -> void {
 
   if (device = GetDevice(); device == 0) {
-    print("Error opening device.");
+    puts("Error opening device.");
     return;
   }
 
@@ -108,16 +113,22 @@ extern "C" auto wasm_main() -> void {
   ShaderModule vertexShader = CreateShaderModule(device, vertexCode);
   auto preferredFormat = GetPreferredCanvasFormat();
 
-  RenderTarget target;
+  ColorTargetState target;
   target.format = preferredFormat;
 
-  PipelineInfo info = {.layout = 255,
-                       .vertex = vertexShader,
-                       .fragment = fragmentShader,
-                       .targets = &target,
-                       .targetCount = 1,
-                       .primitiveTopology =
-                           GPUPrimitiveTopology::TRIANGLE_LIST};
+  RenderPipelineDescriptor info = {
+                       .layout = {},
+                       .vertex = {
+                        .module = vertexShader,
+                        .entryPoint = JsString("main")},
+                       .primitive = { .topology = 
+                           GPUPrimitiveTopology::TRIANGLE_LIST},
+                       .fragment = {
+                        .module = fragmentShader,
+                        .entryPoint = JsString("main"),
+                        .targetCount = 1,
+                        .targets = &target}
+};
 
   pipeline = CreateRenderPipeline(device, info);
 
