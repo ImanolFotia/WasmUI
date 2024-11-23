@@ -2,6 +2,9 @@
 var getPointer = function (address, size) {
     return new Uint32Array(WasmContext["memory"], address, size)
 }
+var getColor = function (buffer, offset, size) {
+    return new Uint32Array(buffer, offset, size)
+}
 
 var PrimitiveTopologyName = [
     "point-list",
@@ -134,6 +137,46 @@ var TextureFormatName = [
     "astcblock",
     "astcchannel"
 ];
+
+
+var VertexFormatName =  [
+    "uint8x2",
+    "uint8x4",
+    "sint8x2",
+    "sint8x4",
+    "unorm8x2",
+    "unorm8x4",
+    "snorm8x2",
+    "snorm8x4",
+    "uint16x2",
+    "uint16x4",
+    "sint16x2",
+    "sint16x4",
+    "unorm16x2",
+    "unorm16x4",
+    "snorm16x2",
+    "snorm16x4",
+    "float16x2",
+    "float16x4",
+    "float32",
+    "float32x2",
+    "float32x3",
+    "float32x4",
+    "uint32",
+    "uint32x2",
+    "uint32x3",
+    "uint32x4",
+    "sint32",
+    "sint32x2",
+    "sint32x3",
+    "sint32x4",
+    "float64",
+    "float64x2",
+    "float64x3",
+    "float64x4",
+    "unorm10_10_10_2",
+];
+
 var iota = 0;
 var TextureFormatMap = {
     r8unorm: iota++,
@@ -215,32 +258,31 @@ var TextureFormatMap = {
 };
 iota = 0;
 
-
 var C_STRUCT = {
-	RenderTarget: 8,
-	VertexAttribute: 24,
-	VertexBufferLayout: 24,
-	VertexState: 32,
-	BlendComponent: 24,
-	BlendState: 48,
-	ColorTargetState: 64,
-	FragmentState: 32,
-	BufferBindingLayout: 8,
-	BindGroupLayoutEntry: 32,
-	PushConstantRange: 24,
-	BindGroupLayoutDescriptor: 32,
+	RenderTarget: 4,
+	VertexAttribute: 12,
+	VertexBufferLayout: 16,
+	VertexState: 40,
+	BlendComponent: 12,
+	BlendState: 24,
+	ColorTargetState: 32,
+	FragmentState: 40,
+	BufferBindingLayout: 4,
+	BindGroupLayoutEntry: 16,
+	PushConstantRange: 12,
+	BindGroupLayoutDescriptor: 40,
 	PipelineLayoutDescriptor: 32,
-	PrimitiveState: 56,
-	StencilFaceState: 32,
-	DepthBiasState: 16,
-	DepthStencilState: 120,
-	MultiSampleState: 24,
-	RenderPipelineDescriptor: 288,
+	PrimitiveState: 28,
+	StencilFaceState: 16,
+	DepthBiasState: 12,
+	DepthStencilState: 64,
+	MultiSampleState: 12,
+	RenderPipelineDescriptor: 208,
 	Operations: 8,
 	RenderPassColorAttachment: 40,
-	RenderPassDepthStencilAttachment: 40,
-	RenderPassTimestampWrites: 24,
-	RenderPassDescriptor: 64,
+	RenderPassDepthStencilAttachment: 32,
+	RenderPassTimestampWrites: 16,
+	RenderPassDescriptor: 56,
 	BufferDescriptor: 24,
 }
 
@@ -253,13 +295,25 @@ let wgpuCreateRenderPipeline = function (device_id, pipelineInfo) {
     const creation_info = getPipelineCreationInfo(pipelineInfo);
     return GlobalGPUContext.register(device.createRenderPipeline(
         {
-            layout: 'auto',
-            vertex: { module: GlobalGPUContext.get(creation_info.vertex.module).object },
+            layout: creation_info.layout,
+            vertex: { module: 
+                GlobalGPUContext.get(creation_info.vertex.module).object,
+                buffers: creation_info.vertex.buffers
+            },
             fragment: {
                 module: GlobalGPUContext.get(creation_info.fragment.module).object,
                 targets: creation_info.fragment.targets
             },
-            primitive: { topology: creation_info.topology, },
+            primitive: { 
+                topology: creation_info.primitive.topology, 
+                cullMode: 'back',
+            },
+            //!TODO: REMOVE THIS
+            depthStencil: {
+                depthWriteEnabled: true,
+                depthCompare: 'less',
+                format: 'depth24plus',
+              },
         }
     ));
 }
@@ -351,7 +405,8 @@ let wgpuBufferGetMappedRange = function(buffer_id, offset, size) {
     var ptr = WasmContext["exports"].alloc_arena(WasmContext["exports"].transfer_arena, size);
 
     buffer.onUnmap = function() {
-        new Uint8Array(mapped).set(new Uint8Array(WasmContext["memory"], ptr, mapped.byteLength));
+        var heap = new Uint8Array(WasmContext["memory"]);
+        new Uint8Array(mapped).set(heap.subarray(ptr, ptr + mapped.byteLength));
         WasmContext["exports"].reset_arena(ptr);
     }
     
@@ -452,17 +507,28 @@ var getPipelineLayoutDescriptor = function(mem) {
 }
 
 var getVertexBufferLayouts = function(mem) {
-    layouts = []
-    layouts_count = mem[3];
-    let layouts_ptr = getPointer(mem[4])
+    var layouts = []
+    var layouts_count = mem[4];
+    let layouts_ptr = getPointer(mem[5])
     for(var i = 0; i < layouts_count; i++) { 
+        var attributeCount = layouts_ptr[i+1];
+        var attribute = getPointer(layouts_ptr[i+2])
+        var attributes = []
+        for(var j = 0; j < attributeCount; j++) {
+            attributes.push( {
+                format: VertexFormatName[attribute[(C_STRUCT.VertexAttribute / 4)*j+0]],
+                offset:  attribute[(C_STRUCT.VertexAttribute / 4)*j+1],
+                shaderLocation: attribute[(C_STRUCT.VertexAttribute / 4)*j+2]
+            })
+        }
         layouts.push( {
-            array_stride: layouts_ptr[i]
+            arrayStride: layouts_ptr[i+0],
+            attributes: attributes
         }
 
         )
     }
-    return 
+    return layouts
 }
 
 
@@ -472,30 +538,62 @@ var getPipelineCreationInfo = function (offset) {
         layout: mem[0] == 0? 'auto' : '',
         vertex: { 
             module: mem[1],
-            entry_point: getString(mem[2]),
+            entry_point: getStringFromPointer(mem[2], mem[3]),
             buffers: getVertexBufferLayouts(mem)
         },
         primitive: {
-            topology: PrimitiveTopologyName[mem[5]]
+            topology: PrimitiveTopologyName[mem[6]]
         },
         fragment: {
-            module: mem[5],
+            module: mem[32],
+            entry_point: getStringFromPointer(mem[33], mem[34]),
             targets: [{
-                format: TextureFormatName[getPointer(mem[3], mem[4])[0]],
-            }]
+                format: TextureFormatName[getPointer(mem[36], C_STRUCT.ColorTargetState)[0]],
+        }]
+            
         },
     };
 }
 
+var getColorAttachment = function(mem) {
+    const attachmentCount = mem[0];
+    var attachments = []
+    var ptr = getPointer(mem[1], C_STRUCT.RenderPassColorAttachment*attachmentCount);
+    for(var i = 0; i < attachmentCount; i++) {
+        var cv = getColor(ptr, 4, 4);
+        attachments.push({
+            view: GlobalGPUContext.get(ptr[0+i]).object,
+            resolve_target: ptr[1+i],
+            loadOp: LoadOpName[ptr[2+i]],
+            storeOp: StoreOpName[ptr[3+i]],
+            clearValue: [ieee32ToFloat(ptr[4 + i]), 
+                         ieee32ToFloat(ptr[5 + i]), 
+                         ieee32ToFloat(ptr[6 + i]), 
+                         ieee32ToFloat(ptr[7 + i])]
+        });
+    }
+    return attachments;
+}
+
 var getRenderPassDescriptor = function (offset) {
     const mem = getPointer(offset, C_STRUCT.RenderPassDescriptor);
+    const color_attachments = getColorAttachment(mem);
+//!TODO: REMOVE THIS
+    const canvas = document.querySelector('canvas');
+const depthTexture = GlobalGPUContext.get(1).object.createTexture({
+    size: [canvas.width, canvas.height],
+    format: 'depth24plus',
+    usage: GPUTextureUsage.RENDER_ATTACHMENT,
+  });
     return {
-        colorAttachments: [{
-            view: GlobalGPUContext.get(mem[0]).object,
-            clearValue: [mem[1], mem[2], mem[3], mem[4]],
-            loadOp: LoadOpName[mem[5]],
-            storeOp: StoreOpName[mem[6]]
-        }]
+        colorAttachments: color_attachments,
+        depthStencilAttachment: {
+            view: depthTexture.createView(),
+        
+            depthClearValue: 1.0,
+            depthLoadOp: 'clear',
+            depthStoreOp: 'store',
+          },
     };
 }
 
@@ -504,7 +602,7 @@ var getBufferDescriptor = function(offset) {
     return {
         size: mem[0],
         usage: mem[1],
-        mappedAtCreation: mem[2],
+        mappedAtCreation: mem[2] == 1 ? true : false,
     };
 
 }
