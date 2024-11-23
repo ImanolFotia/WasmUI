@@ -10,7 +10,7 @@ const size_t cubeVertexCount = 36;
 const size_t cubeVertexArraySize = cubeVertexSize * cubeVertexCount;
 
 // prettier-ignore
-const ssize_t cubeVertexArray[] = {
+const float cubeVertexArray[] = {
   // float4 position, float4 color, float2 uv,
   1, -1, 1, 1,   1, 0, 1, 1,  0, 1,
   -1, -1, 1, 1,  0, 0, 1, 1,  1, 1,
