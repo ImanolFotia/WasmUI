@@ -3,6 +3,8 @@
 #include "defs.hpp"
 #include "string.hpp"
 
+#include <stdint.h>
+
 namespace wgpu {
 
 #define WHOLE_SIZE (2147483647)
@@ -25,32 +27,32 @@ CREATE_HANDLE(PipelineCache);
 CREATE_HANDLE(QuerySet);
 
 struct RenderTarget {
-  size_t format;
+  uint32_t format;
 };
 
 struct VertexAttribute {
-  size_t format;
-  size_t offset;
-  size_t shaderLocation;
+  VertexFormat format;
+  uint32_t offset;
+  uint32_t shaderLocation;
 };
 
 struct VertexBufferLayout {
-  size_t arrayStride;
-  size_t attributeCount;
+  uint32_t arrayStride;
+  uint32_t attributeCount;
   VertexAttribute *attributes;
 };
 
 struct VertexState {
   ShaderModule module;
   JsString entryPoint;
-  size_t layoutsCount;
-  VertexBufferLayout *layouts;
+  uint32_t buffersCount;
+  VertexBufferLayout *buffers;
 };
 
 struct BlendComponent {
-  size_t srcFactor;
-  size_t dstFactor;
-  size_t blendOperation;
+  uint32_t srcFactor;
+  uint32_t dstFactor;
+  uint32_t blendOperation;
 };
 
 
@@ -60,92 +62,92 @@ struct BlendState {
 };
 
 struct ColorTargetState {
-  size_t format;
+  uint32_t format;
   BlendState blend;
-  size_t writeMask;
+  uint32_t writeMask;
 };
 
 
 struct FragmentState {
   ShaderModule module;
   JsString entryPoint;
-  size_t targetCount;
+  uint32_t targetCount;
   ColorTargetState *targets;
 };
 
 struct BufferBindingLayout {
-  size_t type;
+  uint32_t type;
 };
 
 struct BindGroupLayoutEntry {
-  size_t binding;
-  size_t visibility;
-  size_t type;
-  size_t count;
+  uint32_t binding;
+  uint32_t visibility;
+  uint32_t type;
+  uint32_t count;
   // BufferBindingLayout buffer;
 };
 
 struct PushConstantRange {
-  size_t shaderStages;
-  size_t range[2];
+  uint32_t shaderStages;
+  uint32_t range[2];
 };
 
 struct BindGroupLayoutDescriptor {
   ShaderModule module;
   JsString entryPoint;
-  size_t entryCount;
+  uint32_t entryCount;
   BindGroupLayoutEntry *entries;
 };
 
 
 struct PipelineLayoutDescriptor {
-  size_t bindGroupLayoutCount;
+  uint32_t bindGroupLayoutCount;
   BindGroupLayout *bindGroupLayouts;
-  size_t pushConstantRangesCount;
+  uint32_t pushConstantRangesCount;
   PushConstantRange *pushConstantRanges;
 };
 
 struct PrimitiveState {
-  size_t topology;
-  size_t stripIndexFormat;
-  size_t frontFace;
-  size_t cullMode;
+  uint32_t topology;
+  uint32_t stripIndexFormat;
+  uint32_t frontFace;
+  uint32_t cullMode;
   bool unclippedDepth;
-  size_t polygonMode;
+  uint32_t polygonMode;
   bool conservative;
 };
 
 struct StencilFaceState {
-  size_t compare;
-  size_t failOp;
-  size_t stencilFailOp;
-  size_t passOp;
+  uint32_t compare;
+  uint32_t failOp;
+  uint32_t stencilFailOp;
+  uint32_t passOp;
 };
 
 struct StencilState {
   StencilFaceState front;
   StencilFaceState back;
-  size_t readMask;
-  size_t writeMask;
+  uint32_t readMask;
+  uint32_t writeMask;
 };
 
 struct DepthBiasState {
-  size_t constant;
+  uint32_t constant;
   float slope_scale;
   float clamp;
 };
 
 struct DepthStencilState {
-  size_t format;
+  uint32_t format;
   bool depthWriteEnabled;
-  size_t depthCompare;
+  uint32_t depthCompare;
   StencilState stencil;
   DepthBiasState bias;
 };
 
 struct MultiSampleState {
-  size_t count;
-  size_t mask;
+  uint32_t count;
+  uint32_t mask;
   bool alphaToCoverageEnabled;
 };
 
@@ -157,7 +159,7 @@ struct RenderPipelineDescriptor {
   DepthStencilState depthStencil;
   MultiSampleState multisample;
   FragmentState fragment;
-  size_t miltiview;
+  uint32_t miltiview;
   PipelineCache cache;
 };
 
@@ -172,36 +174,36 @@ struct Color {
 
 struct RenderPassColorAttachment {
   TextureView view;
-  TextureView resolveView;
+  TextureView resolveTarget;
   Operations operations;
   Color clearValue;
 };
 
 struct RenderPassDepthStencilAttachment {
   TextureView *view;
-  size_t depthOpsCount;
+  uint32_t depthOpsCount;
   Operations depthOps;
-  size_t stencilOpsCount;
+  uint32_t stencilOpsCount;
   Operations stencilOps;
 };
 
 struct RenderPassTimestampWrites {
   QuerySet *querySet;
-  size_t beginningOfPassWriteIndex;
-  size_t endOfPassWriteIndex;
+  uint32_t beginningOfPassWriteIndex;
+  uint32_t endOfPassWriteIndex;
 };
 
 struct RenderPassDescriptor {
-  size_t colorAttachmentsCount;
+  uint32_t colorAttachmentsCount;
   RenderPassColorAttachment *colorAttachments;
-  size_t depthStencilAttachmentsCount;
-  RenderPassDepthStencilAttachment *depthStencilAttachments;
+  uint32_t depthStencilAttachmentsCount = 0;
+  RenderPassDepthStencilAttachment *depthStencilAttachments = nullptr;
   RenderPassTimestampWrites timestampWrites;
   QuerySet *occlusionQuerySet;
 };
 
 struct BufferDescriptor {
-  size_t size{};
+  uint32_t size{};
   BufferUsage usage{};
   bool mappedAtCreation{};
 };
@@ -218,21 +220,21 @@ PipelineLayout wgpuCreatePipelineLayout(Device, PipelineLayoutDescriptor);
 RenderPass wgpuCommandEncoderBeginRenderPass(CommandEncoder,
                                              RenderPassDescriptor);
 void wgpuRenderPassEncoderSetPipeline(RenderPass, Pipeline);
-void wgpuRenderPassEncoderDraw(RenderPass, size_t);
+void wgpuRenderPassEncoderDraw(RenderPass, uint32_t);
 void wgpuRenderPassEncoderEnd(RenderPass);
 Queue wgpuDeviceGetQueue(Device);
 CommandBuffer wgpuCommandEncoderFinish(CommandEncoder);
-void wgpuQueueSubmit(Queue, size_t, CommandBuffer);
+void wgpuQueueSubmit(Queue, uint32_t, CommandBuffer);
 void wgpuCommandEncoderRelease(CommandEncoder);
 void wgpuTextureViewRelease(TextureView);
 void wgpuRenderPassEncoderRelease(RenderPass);
 void wgpuCommandBufferRelease(CommandBuffer);
 Buffer wgpuCreateBuffer(Device, BufferDescriptor);
-void wgpuRenderPassEncoderSetVertexBuffer(RenderPass, size_t, Buffer, size_t,
-                                          size_t);
+void wgpuRenderPassEncoderSetVertexBuffer(RenderPass, uint32_t, Buffer, uint32_t,
+                                          uint32_t);
 void wgpuDestroyBuffer(Buffer);
 
-void *wgpuBufferGetMappedRange(Buffer, size_t, size_t);
+void *wgpuBufferGetMappedRange(Buffer, uint32_t, uint32_t);
 void wgpuBufferUnmap(Buffer);
 }
 } // namespace imports
@@ -267,7 +269,7 @@ static void RenderPassEncoderSetPipeline(RenderPass encoder,
                                          Pipeline pipeline) {
   imports::wgpuRenderPassEncoderSetPipeline(encoder, pipeline);
 }
-static void RenderPassEncoderDraw(RenderPass encoder, size_t count) {
+static void RenderPassEncoderDraw(RenderPass encoder, uint32_t count) {
   imports::wgpuRenderPassEncoderDraw(encoder, count);
 }
 static void RenderPassEncoderEnd(RenderPass encoder) {
@@ -277,7 +279,7 @@ static CommandBuffer CommandEncoderFinish(CommandEncoder encoder, void *) {
   return imports::wgpuCommandEncoderFinish(encoder);
 }
 
-static void QueueSubmit(Queue queue, size_t count, CommandBuffer commands) {
+static void QueueSubmit(Queue queue, uint32_t count, CommandBuffer commands) {
   imports::wgpuQueueSubmit(queue, count, commands);
 }
 
@@ -302,14 +304,14 @@ static Buffer CreateBuffer(Device device, BufferDescriptor commandBuffer) {
 
 static void DestroyBuffer(Buffer buffer) { imports::wgpuDestroyBuffer(buffer); }
 
-static void RenderPassEncoderSetVertexBuffer(RenderPass encoder, size_t slot,
-                                             Buffer buffer, size_t offset,
-                                             size_t size) {
+static void RenderPassEncoderSetVertexBuffer(RenderPass encoder, uint32_t slot,
+                                             Buffer buffer, uint32_t offset,
+                                             uint32_t size) {
   imports::wgpuRenderPassEncoderSetVertexBuffer(encoder, slot, buffer, offset,
                                                 size);
 }
 
-static void *BufferGetMappedRange(Buffer buffer, size_t offset, size_t size) {
+static void *BufferGetMappedRange(Buffer buffer, uint32_t offset, uint32_t size) {
   return imports::wgpuBufferGetMappedRange(buffer, offset, size);
 }
 
