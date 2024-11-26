@@ -90,6 +90,13 @@ function createEnvironment() {
         "wgpuDestroyBuffer": wgpuDestroyBuffer,
         "wgpuBufferGetMappedRange": wgpuBufferGetMappedRange,
         "wgpuBufferUnmap": wgpuBufferUnmap,
+        "wgpuDeviceCreateBindGroupLayout": wgpuDeviceCreateBindGroupLayout,
+        "wgpuCreatePipelineLayout": wgpuCreatePipelineLayout,
+        "wgpuReleaseBindGroupLayout": wgpuReleaseBindGroupLayout,
+        "wgpuReleasePipelineLayout": wgpuReleasePipelineLayout,
+        "wgpuReleaseBindGroup": wgpuReleaseBindGroup,
+        "wgpuCreateBindGroup": wgpuCreateBindGroup,
+        "wgpuRenderPassEncoderSetBindGroup": wgpuRenderPassEncoderSetBindGroup,
         "request_animation_frame": request_animation_frame,
         "trunc": Math.trunc,
 
