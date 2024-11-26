@@ -3,29 +3,16 @@
 #include <string.hpp>
 #include <webgpu.hpp>
 
+#include <math/matrix.hpp>
+
 struct TextureSize {
   int x, y, z;
 };
 
 extern "C" void request_animation_frame(void *);
-extern "C" float trunc(float);
 
 extern "C" {
 Arena transfer_arena;
-}
-
-float fmodf(float x, float y) { return x - trunc(x / y) * y; }
-
-float min(float a, float b) {
-  if (a > b)
-    return a;
-  return b;
-}
-
-float max(float a, float b) {
-  if (a > b)
-    return b;
-  return a;
 }
 
 const char *vertexCode =
@@ -61,8 +48,11 @@ Device device{};
 Pipeline pipeline{};
 Queue queue{};
 Buffer vtxBuffer{};
+Buffer uniformBuffer{};
+BindGroup bindGroup;
 
 void build_pipeline() {
+
   ColorTargetState target;
   target.format = GetPreferredCanvasFormat();
 
@@ -71,23 +61,80 @@ void build_pipeline() {
   bufferLayout.attributeCount = 3;
   VertexAttribute attributes[3] = {
       {.format = Float32x4, .offset = cubePositionOffset, .shaderLocation = 0},
-      {.format = Float32x4, .offset = cubeColorOffset,       .shaderLocation = 1},
-      {.format = Float32x2, .offset = cubeUVOffset,       .shaderLocation = 2}};
+      {.format = Float32x4, .offset = cubeColorOffset, .shaderLocation = 1},
+      {.format = Float32x2, .offset = cubeUVOffset, .shaderLocation = 2}};
 
   bufferLayout.attributes = attributes;
 
+  BufferBindingLayout buf = {};
+  buf.type = BufferBindingType::UNIFORM;
+
+  BindGroupLayoutEntry bglEntry = {};
+  bglEntry.binding = 0;
+  bglEntry.visibility = ShaderStage::VERTEX;
+  bglEntry.buffer = &buf;
+
+  BindGroupLayoutDescriptor bglDesc = {};
+  bglDesc.entryCount = 1;
+  bglDesc.entries = &bglEntry;
+  BindGroupLayout bindGroupLayout = CreateBindGroupLayout(device, bglDesc);
+
+  PipelineLayoutDescriptor layout_descriptor;
+
+  layout_descriptor.bindGroupLayoutCount = 1;
+  layout_descriptor.bindGroupLayouts = &bindGroupLayout;
+
+  /*
+
+
+  struct BindingResource {
+    TextureView textureView = 0;
+    Sampler sampler = 0;
+    Buffer buffer = 0;
+    uint32_t offset = 0;
+    uint32_t size = 0;
+  };
+
+  struct BindGroupEntry {
+    uint32_t binding;
+    BindingResource resource;
+  };
+
+  struct BindGroupDescriptor {
+    BindGroupLayout layout;
+    uint32_t entryCount;
+    BindGroupEntry entries;
+  };
+
+  */
+
+  BindGroupEntry bgEntry;
+  bgEntry.binding = 0;
+  bgEntry.resource = {.buffer = uniformBuffer};
+
+  BindGroupDescriptor bindGroupDescriptor;
+  bindGroupDescriptor.layout = bindGroupLayout;
+  bindGroupDescriptor.entryCount = 1;
+  bindGroupDescriptor.entries = &bgEntry;
+  bindGroup = CreateBindGroup(device, bindGroupDescriptor);
+
+  PipelineLayout pipeline_layout =
+      CreatePipelineLayout(device, layout_descriptor);
+
   RenderPipelineDescriptor info = {
-      .layout = {},
+      .layout = pipeline_layout,
       .vertex = {.module = CreateShaderModule(device, vertexCode),
-                 .entryPoint = JsString("main"),
+                 .entryPoint = "main",
                  .buffersCount = 1,
                  .buffers = &bufferLayout},
       .primitive = {.topology = GPUPrimitiveTopology::TRIANGLE_LIST},
       .fragment = {.module = CreateShaderModule(device, fragmentCode),
-                   .entryPoint = JsString("main"),
+                   .entryPoint = "main",
                    .targetCount = 1,
                    .targets = &target}};
   pipeline = CreateRenderPipeline(device, info);
+
+  ReleaseBindGroupLayout(bindGroupLayout);
 }
 
 void render_loop(size_t dt) {
@@ -106,6 +153,7 @@ void render_loop(size_t dt) {
                    .colorAttachments = &colorAttachment,
                });
   RenderPassEncoderSetPipeline(pass, pipeline);
+  RenderPassEncoderSetBindGroup(pass, 0, bindGroup, 0, nullptr);
   RenderPassEncoderSetVertexBuffer(pass, 0, vtxBuffer, 0, cubeVertexArraySize);
   RenderPassEncoderDraw(pass, cubeVertexCount);
   RenderPassEncoderEnd(pass);
@@ -135,17 +183,26 @@ extern "C" auto wasm_main() -> void {
        .usage = (BufferUsage)(BufferUsage::VERTEX | BufferUsage::COPY_DST),
        .mappedAtCreation = true});
 
+  uniformBuffer = CreateBuffer(
+      device,
+      {.size = sizeof(Math::mat4),
+       .usage = (BufferUsage)(BufferUsage::UNIFORM | BufferUsage::COPY_DST),
+       .mappedAtCreation = false});
+
   void *data = BufferGetMappedRange(vtxBuffer, 0, cubeVertexArraySize);
 
-  memcpy(data, (void*)cubeVertexArray, cubeVertexArraySize);
+  memcpy(data, (void *)cubeVertexArray, cubeVertexArraySize);
 
   BufferUnmap(vtxBuffer);
 
   build_pipeline();
 
   queue = DeviceGetQueue(device);
-
+#ifdef __wasm__
   request_animation_frame((void *)render_loop);
+#endif
 
-  // DestroyBuffer(vtxBuffer);
+#ifndef __wasm__
+  DestroyBuffer(vtxBuffer);
+#endif
 }
