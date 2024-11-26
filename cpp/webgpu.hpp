@@ -22,11 +22,13 @@ CREATE_HANDLE(CommandEncoder);
 CREATE_HANDLE(CommandBuffer);
 CREATE_HANDLE(ShaderModule);
 CREATE_HANDLE(BindGroupLayout);
+CREATE_HANDLE(BindGroup);
 CREATE_HANDLE(Buffer);
 CREATE_HANDLE(PipelineCache);
 CREATE_HANDLE(QuerySet);
+CREATE_HANDLE(Sampler);
 
-//#pragma pack(push, 1)
+// #pragma pack(push, 1)
 struct RenderTarget {
   uint32_t format;
 };
@@ -56,7 +58,6 @@ struct BlendComponent {
   uint32_t blendOperation;
 };
 
-
 struct BlendState {
   BlendComponent color;
   BlendComponent alpha;
@@ -68,7 +69,6 @@ struct ColorTargetState {
   uint32_t writeMask;
 };
 
-
 struct FragmentState {
   ShaderModule module;
   JsString entryPoint;
@@ -78,28 +78,30 @@ struct FragmentState {
 
 struct BufferBindingLayout {
   uint32_t type;
+  bool hasDynamicOffset = false;
+  uint32_t minBindingSize = 0;
 };
 
-struct BindGroupLayoutEntry {
-  uint32_t binding;
-  uint32_t visibility;
-  uint32_t type;
-  uint32_t count;
-  // BufferBindingLayout buffer;
+struct SamplerBindingLayout {
+  SamplerBindingType type;
+};
+
+struct StorageTextureBindingLayout {
+  StorageTexureAccess access;
+  TextureFormat format;
+  TextureViewDimension viewDimension;
+};
+
+struct TextureBindingLayout {
+  TextureSampleType sampleType;
+  TextureViewDimension viewDimension;
+  bool multisampled;
 };
 
 struct PushConstantRange {
   uint32_t shaderStages;
   uint32_t range[2];
 };
-
-struct BindGroupLayoutDescriptor {
-  ShaderModule module;
-  JsString entryPoint;
-  uint32_t entryCount;
-  BindGroupLayoutEntry *entries;
-};
-
 
 struct PipelineLayoutDescriptor {
   uint32_t bindGroupLayoutCount;
@@ -151,7 +153,6 @@ struct MultiSampleState {
   uint32_t mask;
   bool alphaToCoverageEnabled;
 };
-
 
 struct RenderPipelineDescriptor {
   PipelineLayout layout;
@@ -209,8 +210,40 @@ struct BufferDescriptor {
   bool mappedAtCreation{};
 };
 
+struct BindGroupLayoutEntry {
+  uint32_t binding;
+  uint32_t visibility;
+  BufferBindingLayout *buffer = nullptr;
+  SamplerBindingLayout *sampler = nullptr;
+  TextureBindingLayout *texture = nullptr;
+  StorageTextureBindingLayout *storageTexture = nullptr;
+};
 
-//#pragma pack(pop)
+struct BindGroupLayoutDescriptor {
+  uint32_t entryCount;
+  BindGroupLayoutEntry *entries;
+};
+
+struct BindingResource {
+  TextureView textureView = 0;
+  Sampler sampler = 0;
+  Buffer buffer = 0;
+  uint32_t offset = 0;
+  uint32_t size = 0;
+};
+
+struct BindGroupEntry {
+  uint32_t binding;
+  BindingResource resource;
+};
+
+struct BindGroupDescriptor {
+  BindGroupLayout layout;
+  uint32_t entryCount;
+  BindGroupEntry *entries;
+};
+
+// #pragma pack(pop)
 
 namespace imports {
 extern "C" {
@@ -234,12 +267,19 @@ void wgpuTextureViewRelease(TextureView);
 void wgpuRenderPassEncoderRelease(RenderPass);
 void wgpuCommandBufferRelease(CommandBuffer);
 Buffer wgpuCreateBuffer(Device, BufferDescriptor);
-void wgpuRenderPassEncoderSetVertexBuffer(RenderPass, uint32_t, Buffer, uint32_t,
-                                          uint32_t);
+void wgpuRenderPassEncoderSetVertexBuffer(RenderPass, uint32_t, Buffer,
+                                          uint32_t, uint32_t);
 void wgpuDestroyBuffer(Buffer);
+
+BindGroupLayout wgpuDeviceCreateBindGroupLayout(Device, BindGroupLayoutDescriptor);
 
 void *wgpuBufferGetMappedRange(Buffer, uint32_t, uint32_t);
 void wgpuBufferUnmap(Buffer);
+void wgpuReleaseBindGroupLayout(BindGroupLayout layout);
+void wgpuReleasePipelineLayout(PipelineLayout layout);
+BindGroup wgpuCreateBindGroup(Device, BindGroupDescriptor);
+void wgpuReleaseBindGroup(BindGroup);
+void wgpuRenderPassEncoderSetBindGroup(RenderPass, uint32_t, BindGroup, uint32_t, void*);
 }
 } // namespace imports
 
@@ -315,10 +355,22 @@ static void RenderPassEncoderSetVertexBuffer(RenderPass encoder, uint32_t slot,
                                                 size);
 }
 
-static void *BufferGetMappedRange(Buffer buffer, uint32_t offset, uint32_t size) {
+static void *BufferGetMappedRange(Buffer buffer, uint32_t offset,
+                                  uint32_t size) {
   return imports::wgpuBufferGetMappedRange(buffer, offset, size);
 }
 
 static void BufferUnmap(Buffer buffer) { imports::wgpuBufferUnmap(buffer); }
+
+static BindGroupLayout CreateBindGroupLayout(Device device, BindGroupLayoutDescriptor descriptor) { return imports::wgpuDeviceCreateBindGroupLayout(device, descriptor); }
+
+static void ReleaseBindGroupLayout(BindGroupLayout layout) {imports::wgpuReleaseBindGroupLayout(layout);}
+static void ReleasePipelineLayout(PipelineLayout layout) { imports::wgpuReleasePipelineLayout(layout); }
+
+static BindGroup CreateBindGroup(Device device, BindGroupDescriptor descriptor) { return imports::wgpuCreateBindGroup(device, descriptor); }
+static void ReleaseBindGroup(BindGroup bindGroup) { imports::wgpuReleaseBindGroup(bindGroup); };
+static PipelineLayout CreatePipelineLayout(Device device, PipelineLayoutDescriptor layout_descriptor) { return imports::wgpuCreatePipelineLayout(device, layout_descriptor); };
+
+static void RenderPassEncoderSetBindGroup(RenderPass passId, uint32_t index, BindGroup bindGroup, uint32_t dynamicOffsetCount, void* dynamicOffset) { imports::wgpuRenderPassEncoderSetBindGroup(passId, index, bindGroup, dynamicOffsetCount, dynamicOffset); }
 
 } // namespace wgpu
