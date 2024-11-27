@@ -2,7 +2,7 @@
 
 #include "defs.hpp"
 #include "string.hpp"
-
+#include "math/vector.hpp"
 #include <stdint.h>
 
 namespace wgpu {
@@ -104,10 +104,10 @@ struct PushConstantRange {
 };
 
 struct PipelineLayoutDescriptor {
-  uint32_t bindGroupLayoutCount;
-  BindGroupLayout *bindGroupLayouts;
-  uint32_t pushConstantRangesCount;
-  PushConstantRange *pushConstantRanges;
+  uint32_t bindGroupLayoutCount = 0;
+  BindGroupLayout *bindGroupLayouts = nullptr;
+  uint32_t pushConstantRangesCount = 0;
+  PushConstantRange *pushConstantRanges = nullptr;
 };
 
 struct PrimitiveState {
@@ -141,9 +141,9 @@ struct DepthBiasState {
 };
 
 struct DepthStencilState {
-  uint32_t format;
-  bool depthWriteEnabled;
-  uint32_t depthCompare;
+  uint32_t format = 0;
+  bool depthWriteEnabled = false;
+  CompareFunction depthCompare;
   StencilState stencil;
   DepthBiasState bias;
 };
@@ -174,6 +174,10 @@ struct Color {
   float v[4];
 };
 
+struct DepthStencilClearValue {
+  float v[2];
+};
+
 struct RenderPassColorAttachment {
   TextureView view;
   TextureView resolveTarget;
@@ -182,11 +186,11 @@ struct RenderPassColorAttachment {
 };
 
 struct RenderPassDepthStencilAttachment {
-  TextureView *view;
-  uint32_t depthOpsCount;
+  TextureView view;
   Operations depthOps;
-  uint32_t stencilOpsCount;
   Operations stencilOps;
+  DepthStencilClearValue clearValue;
+  bool readOnly = true;
 };
 
 struct RenderPassTimestampWrites {
@@ -243,6 +247,30 @@ struct BindGroupDescriptor {
   BindGroupEntry *entries;
 };
 
+struct TextureViewDescriptor {
+    TextureFormat format;
+    uint32_t dimension;
+    TextureAspect aspect;
+    uint32_t baseMipLevel;
+    uint32_t mipLevelCount;
+    uint32_t baseArrayLayer;
+    uint32_t arrayLayerCount;
+};
+
+struct TextureSize {
+    int size[3];
+};
+
+struct TextureDescriptor {
+    TextureSize size;
+    uint32_t mipLevelCount = 1;
+    uint32_t sampleCount = 1;
+    TextureDimension dimension;
+    TextureFormat format;
+    TextureUsage usage;
+    //view_formats: &'a [TextureFormat],
+};
+
 // #pragma pack(pop)
 
 namespace imports {
@@ -280,6 +308,12 @@ void wgpuReleasePipelineLayout(PipelineLayout layout);
 BindGroup wgpuCreateBindGroup(Device, BindGroupDescriptor);
 void wgpuReleaseBindGroup(BindGroup);
 void wgpuRenderPassEncoderSetBindGroup(RenderPass, uint32_t, BindGroup, uint32_t, void*);
+
+void wgpuQueueWriteBuffer(Queue, Buffer, size_t, void*, size_t);
+
+Texture wgpuCreateTexture(Device, TextureDescriptor);
+
+TextureView wgpuCreateTextureView(Texture, TextureDescriptor*);
 }
 } // namespace imports
 
@@ -372,5 +406,10 @@ static void ReleaseBindGroup(BindGroup bindGroup) { imports::wgpuReleaseBindGrou
 static PipelineLayout CreatePipelineLayout(Device device, PipelineLayoutDescriptor layout_descriptor) { return imports::wgpuCreatePipelineLayout(device, layout_descriptor); };
 
 static void RenderPassEncoderSetBindGroup(RenderPass passId, uint32_t index, BindGroup bindGroup, uint32_t dynamicOffsetCount, void* dynamicOffset) { imports::wgpuRenderPassEncoderSetBindGroup(passId, index, bindGroup, dynamicOffsetCount, dynamicOffset); }
+static void QueueWriteBuffer(Queue queue, Buffer buffer, size_t offset, void* data, size_t size) {imports::wgpuQueueWriteBuffer(queue, buffer, offset, data, size); }
+static Texture CreateTexture(Device device, TextureDescriptor descriptor){ return imports::wgpuCreateTexture(device, descriptor); }
+
+static TextureView CreateTextureView(Texture texture, TextureDescriptor* descriptor = nullptr){ return imports::wgpuCreateTextureView(texture, descriptor); }
+
 
 } // namespace wgpu

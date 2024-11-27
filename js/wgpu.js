@@ -6,6 +6,11 @@ var getColor = function (buffer, offset, size) {
     return new Uint32Array(buffer, offset, size)
 }
 
+let WasmWindow = {
+    width: 0,
+    height: 0
+}
+
 var PrimitiveTopologyName = [
     "point-list",
     "line-list",
@@ -20,6 +25,18 @@ var PrimitiveTopologyMap = [
     { "line-strip": 2 },
     { "triangle-list": 3 },
     { "triangle-strip": 4 },
+];
+
+
+var CompareFunctionName = [
+    "never",
+    "less",
+    "equal",
+    "less-equal",
+    "greater",
+    "not-equal",
+    "greater-equal",
+    "always",
 ];
 
 var LoadOpName = [
@@ -60,13 +77,14 @@ var BufferUsageName = [
 ];
 
 var bufferBindingTypeName = [
-"uniform",
-"storage",
-"read-only-storage",
+    "uniform",
+    "storage",
+    "read-only-storage",
 
-] 
+]
 
 var TextureFormatName = [
+    "none",
     "r8unorm",
     "r8snorm",
     "r8uint",
@@ -184,8 +202,13 @@ var VertexFormatName = [
     "unorm10_10_10_2",
 ];
 
+var DimensionName = [
+    "1d", "2d", "3d"
+]
+
 var iota = 0;
 var TextureFormatMap = {
+    none: iota++,
     r8unorm: iota++,
     r8snorm: iota++,
     r8uint: iota++,
@@ -277,7 +300,7 @@ var C_STRUCT = {
     BufferBindingLayout: 4,
     PushConstantRange: 12,
     BindGroupLayoutDescriptor: 40,
-    PipelineLayoutDescriptor: 32,
+    PipelineLayoutDescriptor: 16,
     PrimitiveState: 28,
     StencilFaceState: 16,
     DepthBiasState: 12,
@@ -286,7 +309,7 @@ var C_STRUCT = {
     RenderPipelineDescriptor: 208,
     Operations: 8,
     RenderPassColorAttachment: 40,
-    RenderPassDepthStencilAttachment: 32,
+    RenderPassDepthStencilAttachment: 8*4,
     RenderPassTimestampWrites: 16,
     RenderPassDescriptor: 56,
     BufferDescriptor: 24,
@@ -294,7 +317,8 @@ var C_STRUCT = {
     BindGroupLayoutDescriptor: 8,
     BindGroupDescriptor: 12,
     BindGroupEntry: 12,
-    BindingResource: 20
+    BindingResource: 20,
+    TextureDescriptor: 32
 }
 
 let wgpuGetDevice = function () {
@@ -304,32 +328,41 @@ let wgpuGetDevice = function () {
 let wgpuCreateRenderPipeline = function (device_id, pipelineInfo) {
     const device = GlobalGPUContext.get(device_id).object;
     const creation_info = getPipelineCreationInfo(pipelineInfo);
-    return GlobalGPUContext.register(device.createRenderPipeline(
-        {
-            layout: creation_info.layout,
-            vertex: {
-                module:
-                    GlobalGPUContext.get(creation_info.vertex.module).object,
-                    entryPoint: creation_info.vertex.entry_point,
-                buffers: creation_info.vertex.buffers
-            },
-            fragment: {
-                module: GlobalGPUContext.get(creation_info.fragment.module).object,
-                entryPoint: creation_info.fragment.entry_point,
-                targets: creation_info.fragment.targets
-            },
-            primitive: {
-                topology: creation_info.primitive.topology,
-                cullMode: 'back',
-            },
-            //!TODO: REMOVE THIS
-            depthStencil: {
-                depthWriteEnabled: true,
-                depthCompare: 'less',
-                format: 'depth24plus',
-            },
+    let depthStencil = undefined
+
+    if (creation_info.depthStencil.format != "none") {
+        depthStencil = {
+            depthWriteEnabled: creation_info.depthStencil.depthWriteEnabled,
+            depthCompare: creation_info.depthStencil.depthCompare,
+            format: creation_info.depthStencil.format,
         }
-    ));
+    }
+    try {
+        return GlobalGPUContext.register(device.createRenderPipeline(
+            {
+                layout: creation_info.layout,
+                vertex: {
+                    module:
+                        GlobalGPUContext.get(creation_info.vertex.module).object,
+                    entryPoint: creation_info.vertex.entry_point,
+                    buffers: creation_info.vertex.buffers
+                },
+                fragment: {
+                    module: GlobalGPUContext.get(creation_info.fragment.module).object,
+                    entryPoint: creation_info.fragment.entry_point,
+                    targets: creation_info.fragment.targets
+                },
+                primitive: {
+                    topology: creation_info.primitive.topology,
+                    cullMode: 'back',
+                },
+                depthStencil: depthStencil
+            }
+        ));
+    } catch (error) { 
+        console.error("An error has ocurred:", error)
+        abort();
+    }
 }
 
 let wgpuDeviceCreateBindGroupLayout = function (device_id, ld_id) {
@@ -352,11 +385,11 @@ let wgpuDeviceCreateBindGroupLayout = function (device_id, ld_id) {
     return GlobalGPUContext.register(device.createBindGroupLayout({ entries: entries }))
 }
 
-let wgpuReleaseBindGroupLayout = function(layout_id) {
+let wgpuReleaseBindGroupLayout = function (layout_id) {
     GlobalGPUContext.release(layout_id);
 }
 
-let wgpuReleasePipelineLayout = function(layout_id) {
+let wgpuReleasePipelineLayout = function (layout_id) {
     GlobalGPUContext.release(layout_id);
 }
 
@@ -392,6 +425,14 @@ let wgpuCreateCommandEncoder = function (device) {
 
 let wgpuSwapChainGetCurrentTextureView = function () {
     return GlobalGPUContext.register(GlobalGPUContext["context"].getCurrentTexture().createView());
+}
+
+
+let wgpuCreateTextureView = function (texture_id, descriptor) {
+    //if(descriptor === undefined) {
+    let texture = GlobalGPUContext.get(texture_id).object;
+    return GlobalGPUContext.register(texture.createView());
+    //}
 }
 
 let wgpuCommandEncoderBeginRenderPass = function (encoder_id, renderPassDescriptor) {
@@ -495,13 +536,13 @@ let wgpuRenderPassEncoderSetVertexBuffer = function (encoder_id, slot, vertex_bu
     encoder.setVertexBuffer(slot, vertex_buffer, offset, size);
 }
 
-let wgpuCreatePipelineLayout = function(device_id, layout_desc) {
+let wgpuCreatePipelineLayout = function (device_id, layout_desc) {
     let device = GlobalGPUContext.get(device_id).object;
-    layout_descriptor = getPipelineLayoutDescriptor(layout_desc);
+    layout_descriptor = getPipelineLayoutDescriptor(getPointer(layout_desc, C_STRUCT.PipelineLayoutDescriptor));
     return GlobalGPUContext.register(device.createPipelineLayout(layout_descriptor));
 }
 
-let wgpuCreateBindGroup = function(device_id, desc) {
+let wgpuCreateBindGroup = function (device_id, desc) {
     let device = GlobalGPUContext.get(device_id).object;
     let descriptor = getPointer(desc, C_STRUCT.BindGroupDescriptor);
 
@@ -509,17 +550,17 @@ let wgpuCreateBindGroup = function(device_id, desc) {
     let entryCount = descriptor[1];
     let entries_ptr = getPointer(descriptor[2], C_STRUCT.BindGroupEntry * entryCount);
     let entries = []
-    for(var i = 0; i < entryCount; i++) {
+    for (var i = 0; i < entryCount; i++) {
         //let entryResource = getPointer(entries_ptr[entryCount * i + 1], entryCount*C_STRUCT.BindingResource);
         let resource = {}
-        if(entries_ptr[entryCount * i + 1] != 0) resource.textureView = GlobalGPUContext.get(entries_ptr[entryCount * i + 1]).object;
-        else if(entries_ptr[entryCount * i + 2] != 0) resource.sampler = GlobalGPUContext.get(entries_ptr[entryCount * i + 2]).object;
-        else if(entries_ptr[entryCount * i + 3] != 0){
+        if (entries_ptr[entryCount * i + 1] != 0) resource.textureView = GlobalGPUContext.get(entries_ptr[entryCount * i + 1]).object;
+        else if (entries_ptr[entryCount * i + 2] != 0) resource.sampler = GlobalGPUContext.get(entries_ptr[entryCount * i + 2]).object;
+        else if (entries_ptr[entryCount * i + 3] != 0) {
             resource.buffer = GlobalGPUContext.get(entries_ptr[entryCount * i + 3]).object;
             resource.offset = entries_ptr[entryCount * i + 4];
             resource.size = entries_ptr[entryCount * i + 5];
         }
-        entries.push ({
+        entries.push({
             binding: entries_ptr[entryCount * i + 0],
             resource: resource
         })
@@ -530,8 +571,35 @@ let wgpuCreateBindGroup = function(device_id, desc) {
     }))
 }
 
-let wgpuReleaseBindGroup = function(bindGroup) {
+let wgpuReleaseBindGroup = function (bindGroup) {
     GlobalGPUContext.release(bindGroup);
+}
+
+let wgpuQueueWriteBuffer = function (queue_id, buffer_id, offset, ptr, size) {
+    var queue = GlobalGPUContext.get(queue_id).object;
+    var buffer = GlobalGPUContext.get(buffer_id).object;
+    var heap = new Uint8Array(WasmContext["memory"]);
+    var subarray = heap.subarray(ptr, ptr + size);
+    queue.writeBuffer(buffer, offset, subarray, 0, size);
+}
+
+let wgpuCreateTexture = function (device_id, descriptor) {
+    let device = GlobalGPUContext.get(device_id).object;
+    let mem = getPointer(descriptor, C_STRUCT.TextureDescriptor);
+
+    size = []
+    if(mem[5] === 0) size = [mem[0]]
+    else if(mem[5] === 1) size = [mem[0], mem[1]]
+    else if(mem[5] === 2) size = [mem[0], mem[1], mem[2]]
+
+    return GlobalGPUContext.register(device.createTexture({
+        size: size,
+        mipLevelCount: mem[3],
+        sampleCount: mem[4],
+        dimension: DimensionName[mem[5]],
+        format: TextureFormatName[mem[6]],
+        usage: mem[7]
+    }));
 }
 
 
@@ -598,8 +666,8 @@ async function initWebGpu() {
 var getPipelineLayoutDescriptor = function (mem) {
     let bg_layouts = []
     let pc_ranges = []
-    for (var i = 0; i < mem[0]; i++) bg_layouts.push(getPointer(mem[1])[i])
-    for (var i = 0; i < mem[2]; i++) pc_ranges.push(getPointer(mem[3])[i])
+    for (var i = 0; i < mem[0]; i++) bg_layouts.push(GlobalGPUContext.get(getPointer(mem[1], 1)[0]).object)
+    for (var i = 0; i < mem[2]; i++) pc_ranges.push(GlobalGPUContext.get(getPointer(mem[3], 1)[0]).object)
     return {
         bindGroupLayouts: bg_layouts,
         pushConstantRanges: pc_ranges
@@ -652,6 +720,11 @@ var getPipelineCreationInfo = function (offset) {
             }]
 
         },
+        depthStencil: {
+            format: TextureFormatName[mem[13]],
+            depthWriteEnabled: mem[14],
+            depthCompare: CompareFunctionName[mem[15]]
+        }
     };
 }
 
@@ -675,25 +748,34 @@ var getColorAttachment = function (mem) {
     return attachments;
 }
 
+var getDepthAttachment = function (mem) {
+    const attachmentCount = mem[2];
+    var attachments = {}
+    var ptr = getPointer(mem[3], C_STRUCT.RenderPassDepthStencilAttachment * attachmentCount);
+    for (var i = 0; i < attachmentCount; i++) {
+        attachments = {
+            view: GlobalGPUContext.get(ptr[0 + i]).object,
+            depthLoadOp: LoadOpName[ptr[1 + i]],
+            depthStoreOp: StoreOpName[ptr[2+ i]],
+            stencilLoadOp: LoadOpName[ptr[3 + i]],
+            stencilStoreOp: StoreOpName[ptr[4+ i]],
+            depthClearValue: ieee32ToFloat(ptr[5+ i]),
+            stencilClearValue: ieee32ToFloat(ptr[6+ i]),
+            readOnly: ptr[7+ i]
+        };
+    }
+    return attachments;
+}
+
 var getRenderPassDescriptor = function (offset) {
     const mem = getPointer(offset, C_STRUCT.RenderPassDescriptor);
     const color_attachments = getColorAttachment(mem);
-    //!TODO: REMOVE THIS
+    const depth_attachments = mem[2] === 0 ? undefined : getDepthAttachment(mem);
     const canvas = document.querySelector('canvas');
-    const depthTexture = GlobalGPUContext.get(1).object.createTexture({
-        size: [canvas.width, canvas.height],
-        format: 'depth24plus',
-        usage: GPUTextureUsage.RENDER_ATTACHMENT,
-    });
+
     return {
         colorAttachments: color_attachments,
-        depthStencilAttachment: {
-            view: depthTexture.createView(),
-
-            depthClearValue: 1.0,
-            depthLoadOp: 'clear',
-            depthStoreOp: 'store',
-        },
+        depthStencilAttachment: depth_attachments
     };
 }
 
