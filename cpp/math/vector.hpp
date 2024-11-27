@@ -1,90 +1,157 @@
 #pragma once
 
 #include "math.hpp"
+#include <stdint.h>
 
 namespace Math {
-struct vec3 {
-  vec3() = default;
-  vec3(float v) : x{v}, y{v}, z{v} {}
 
-  vec3(float x, float y, float z) : x{x}, y{y}, z{z} {}
+template <uint32_t comps, typename T> struct vec {};
+
+template <typename T> struct vec<2, T> {
+
+  vec(T v) : x{v}, y{v} {}
+
+  vec(T x, T y) : x{x}, y{y}{}
 
   union {
     struct {
-      float x = 0;
-      float y = 0;
-      float z = 0;
+      T x, y;
     };
-    float data[3];
+    struct {
+      T r, g;
+    };
+    struct {
+      T s, t;
+    };
+    T data[2];
   };
-
-  vec3 operator+(vec3 other) { return {x + other.x, y + other.y, z + other.z}; }
-
-  vec3 operator-(vec3 other) { return {x - other.x, y - other.y, z - other.z}; }
-
-  vec3 operator*(vec3 other) { return {x * other.x, y * other.y, z * other.z}; }
-
-  vec3 operator/(vec3 other) { return {x / other.x, y / other.y, z / other.z}; }
 
   float length() { return sqrt(dot(*this)); }
 
-  [[maybe_unused]] vec3 normalize() {
+  vec operator+(vec other) { return {x + other.x, y + other.y}; }
+
+  vec operator-(vec other) { return {x - other.x, y - other.y}; }
+
+  vec operator*(vec other) { return {x * other.x, y * other.y}; }
+
+  vec operator/(vec other) { return {x / other.x, y / other.y}; }
+
+  T dot(vec other) { return x * other.x + y * other.y; }
+
+  vec cross(vec o) {
+    //return {y * o.z - o.y * z, o.x * z - x * o.z, x * o.y - o.x * y};
+  }
+
+  [[maybe_unused]] vec normalize() {
     float l = length();
     *this = *this / l;
     return *this;
   }
-
-  float dot(vec3 other) { return x * other.x + y * other.y + z * other.z; }
-
-  vec3 cross(vec3 o) {
-    return {y*o.z-o.y*z, o.x*z-x*o.z, x*o.y-o.x*y};
-  }
 };
 
+template <typename T> struct vec<3, T> {
 
-struct vec4 {
-  vec4() = default;
-  vec4(float v) : x{v}, y{v}, z{v}, w{v} {}
+  vec(T v) : x{v}, y{v}, z{v} {}
 
-  vec4(float x, float y, float z, float w) : x{x}, y{y}, z{z}, w{w} {}
+  vec(T x, T y, T z) : x{x}, y{y}, z{z} {}
 
   union {
     struct {
-      float x = 0;
-      float y = 0;
-      float z = 0;
-      float w = 0;
+      T x, y, z;
     };
-    float data[4];
+    struct {
+      T r, g, b;
+    };
+    T data[3];
   };
-
-  vec4 operator+(vec4 other) { return {x + other.x, y + other.y, z + other.z, w + other.w}; }
-
-  vec4 operator-(vec4 other) { return {x - other.x, y - other.y, z - other.z, w - other.w}; }
-
-  vec4 operator*(vec4 other) { return {x * other.x, y * other.y, z * other.z, w * other.w}; }
-
-  vec4 operator/(vec4 other) { return {x / other.x, y / other.y, z / other.z, w / other.w}; }
 
   float length() { return sqrt(dot(*this)); }
 
-  [[maybe_unused]] vec4 normalize() {
+  vec operator+(vec other) { return {x + other.x, y + other.y, z + other.z}; }
+
+  vec operator-(vec other) { return {x - other.x, y - other.y, z - other.z}; }
+
+  vec operator*(vec other) { return {x * other.x, y * other.y, z * other.z}; }
+
+  vec operator/(vec other) { return {x / other.x, y / other.y, z / other.z}; }
+
+  T dot(vec other) { return x * other.x + y * other.y + z * other.z; }
+
+  vec cross(vec o) {
+    return {y * o.z - o.y * z, o.x * z - x * o.z, x * o.y - o.x * y};
+  }
+
+  [[maybe_unused]] vec normalize() {
     float l = length();
     *this = *this / l;
     return *this;
   }
+};
 
-  float dot(vec4 other) { return x * other.x + y * other.y + z * other.z + w * other.w; }
+template <typename T> struct vec<4, T> {
 
-  vec4 cross(vec4 o) {
-    return {y*o.z-o.y*z, o.x*z-x*o.z, x*o.y-o.x*y, 1.0f};
+  vec(T v) : x{v}, y{v}, z{v}, w{v} {}
+
+  vec(T x, T y, T z, T w) : x{x}, y{y}, z{z}, w{w} {}
+
+  union {
+    struct {
+      T x, y, z, w;
+    };
+    struct {
+      T r, g, b, a;
+    };
+    T data[4];
+  };
+
+  float length() { return sqrt(dot(*this)); }
+
+  vec operator+(vec other) {
+    return {x + other.x, y + other.y, z + other.z, w + other.w};
+  }
+
+  vec operator-(vec other) {
+    return {x - other.x, y - other.y, z - other.z, w - other.w};
+  }
+
+  vec operator*(vec other) {
+    return {x * other.x, y * other.y, z * other.z, w * other.w};
+  }
+
+  vec operator/(vec other) {
+    return {x / other.x, y / other.y, z / other.z, w / other.w};
+  }
+
+  float dot(vec other) {
+    return x * other.x + y * other.y + z * other.z + w * other.w;
+  }
+
+  vec cross(vec o) {
+    return {y * o.z - o.y * z, o.x * z - x * o.z, x * o.y - o.x * y, 1.0f};
+  }
+
+  [[maybe_unused]] vec normalize() {
+    float l = length();
+    *this = *this / l;
+    return *this;
   }
 };
+
+using  vec2 = vec<2, float>;
+using dvec2 = vec<2, double>;
+using ivec2 = vec<2, int>;
+using  vec3 = vec<3, float>;
+using dvec3 = vec<3, double>;
+using ivec3 = vec<3, int>;
+using  vec4 = vec<4, float>;
+using dvec4 = vec<4, double>;
+using ivec4 = vec<4, int>;
 
 /*
-static vec3 operator+(vec3 a, vec3 b) { return {a.x + b.x, a.y + b.y, a.z + b.z}; }
-static vec3 operator-(vec3 a, vec3 b) { return {a.x - b.x, a.y - b.y, a.z - b.z}; }
-static vec3 operator*(vec3 a, vec3 b) { return {a.x * b.x, a.y * b.y, a.z * b.z}; }
-static vec3 operator/(vec3 a, vec3 b) { return {a.x / b.x, a.y / b.y, a.z / b.z}; }
+static vec3 operator+(vec3 a, vec3 b) { return {a.x + b.x, a.y + b.y, a.z +
+b.z}; } static vec3 operator-(vec3 a, vec3 b) { return {a.x - b.x, a.y - b.y,
+a.z - b.z}; } static vec3 operator*(vec3 a, vec3 b) { return {a.x * b.x, a.y *
+b.y, a.z * b.z}; } static vec3 operator/(vec3 a, vec3 b) { return {a.x / b.x,
+a.y / b.y, a.z / b.z}; }
 */
 } // namespace Math
