@@ -10,17 +10,6 @@ extern "C" void puts(JsString);
 extern "C" void request_animation_frame(void *);
 extern "C" float trunc(float);
 
-float fmodf(float x, float y) { return x - trunc(x / y) * y; }
-
-float min(float a, float b) {
-  if(a > b) return a;
-  return b;
-}
-
-float max(float a, float b) {
-  if(a > b) return b;
-  return a;
-}
 
 const char *vertexCode =
     R"(
@@ -63,7 +52,7 @@ Device device{};
 Pipeline pipeline{};
 Queue queue{};
 
-void render_loop(size_t dt) {
+extern "C" void render_loop(size_t dt) {
   /*char str[5];
 
   str[0] = '0' + fmodf((dt / 1000), 10);
@@ -120,12 +109,12 @@ extern "C" auto wasm_main() -> void {
                        .layout = {},
                        .vertex = {
                         .module = vertexShader,
-                        .entryPoint = JsString("main")},
+                        .entryPoint = "main"},
                        .primitive = { .topology = 
                            GPUPrimitiveTopology::TRIANGLE_LIST},
                        .fragment = {
                         .module = fragmentShader,
-                        .entryPoint = JsString("main"),
+                        .entryPoint = "main",
                         .targetCount = 1,
                         .targets = &target}
 };

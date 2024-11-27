@@ -17,6 +17,10 @@ Arena transfer_arena;
 
 const char *vertexCode =
     R"(
+    struct Uniforms {
+      viewProj : mat4x4f,
+    };
+    @binding(0) @group(0) var<uniform> uniforms : Uniforms;
     struct VertexOut {
         @builtin(position) Position: vec4f,
         @location(0) color: vec4f,
@@ -28,7 +32,7 @@ const char *vertexCode =
     };
     @vertex fn main( vtx: VertexIn ) -> VertexOut {
       var vsOut: VertexOut;
-      vsOut.Position = vec4f((vtx.position.x)/vtx.position.z, (vtx.position.y)/vtx.position.z, 0.0, 1.0);
+      vsOut.Position = uniforms.viewProj * vtx.position;
       vsOut.color = vtx.color;
       return vsOut;
     })";
@@ -49,7 +53,13 @@ Pipeline pipeline{};
 Queue queue{};
 Buffer vtxBuffer{};
 Buffer uniformBuffer{};
-BindGroup bindGroup;
+BindGroup bindGroup{};
+Texture depthBuffer{};
+
+Math::mat4 viewProj = {Math::vec4(0.936213, -0.323997, -0.325092, -0.324443),
+                       Math::vec4(0.000000, 1.565988, -0.487639, -0.486664),
+                       Math::vec4(-0.374485, -0.809994, -0.812731, -0.811107),
+                       Math::vec4(0.000000, 0.000000, 5.976554, 6.164413)};
 
 void build_pipeline() {
 
@@ -84,33 +94,9 @@ void build_pipeline() {
   layout_descriptor.bindGroupLayoutCount = 1;
   layout_descriptor.bindGroupLayouts = &bindGroupLayout;
 
-  /*
-
-
-  struct BindingResource {
-    TextureView textureView = 0;
-    Sampler sampler = 0;
-    Buffer buffer = 0;
-    uint32_t offset = 0;
-    uint32_t size = 0;
-  };
-
-  struct BindGroupEntry {
-    uint32_t binding;
-    BindingResource resource;
-  };
-
-  struct BindGroupDescriptor {
-    BindGroupLayout layout;
-    uint32_t entryCount;
-    BindGroupEntry entries;
-  };
-
-  */
-
   BindGroupEntry bgEntry;
   bgEntry.binding = 0;
-  bgEntry.resource = {.buffer = uniformBuffer};
+  bgEntry.resource = {.buffer = uniformBuffer, .size = sizeof(Math::mat4)};
 
   BindGroupDescriptor bindGroupDescriptor;
   bindGroupDescriptor.layout = bindGroupLayout;
@@ -121,6 +107,7 @@ void build_pipeline() {
   PipelineLayout pipeline_layout =
       CreatePipelineLayout(device, layout_descriptor);
 
+
   RenderPipelineDescriptor info = {
       .layout = pipeline_layout,
       .vertex = {.module = CreateShaderModule(device, vertexCode),
@@ -128,42 +115,81 @@ void build_pipeline() {
                  .buffersCount = 1,
                  .buffers = &bufferLayout},
       .primitive = {.topology = GPUPrimitiveTopology::TRIANGLE_LIST},
+      .depthStencil = {
+        .format = TextureFormat::Depth24Plus,
+        .depthWriteEnabled = true,
+        .depthCompare = CompareFunction::Less,
+      },
       .fragment = {.module = CreateShaderModule(device, fragmentCode),
                    .entryPoint = "main",
                    .targetCount = 1,
-                   .targets = &target}};
+                   .targets = &target},
+      };
   pipeline = CreateRenderPipeline(device, info);
+
+  depthBuffer = CreateTexture(device, {
+    .size = {(int)getWindowWidth(), (int)getWindowHeight(), 0},
+    .dimension = TextureDimension::d2D,
+    .format = TextureFormat::Depth24Plus,
+    .usage = TextureUsage::RENDER_ATTACHMENT,
+  });
 
   ReleaseBindGroupLayout(bindGroupLayout);
 }
 
-void render_loop(size_t dt) {
+float time = 0.0f;
+extern "C" void render_loop(float dt) {
+  time += dt;
   CommandEncoder encoder = CreateCommandEncoder(device);
 
   TextureView textureView = SwapChainGetCurrentTextureView();
+  TextureView depthView = CreateTextureView(depthBuffer);
 
   RenderPassColorAttachment colorAttachment;
   colorAttachment.view = textureView;
   colorAttachment.clearValue = {0.0f, 0.0f, 0.0, 1.0};
   colorAttachment.operations = {LoadOp::CLEAR, StoreOp::STORE};
 
+  RenderPassDepthStencilAttachment depthAttachment;
+  depthAttachment.view = depthView;
+  depthAttachment.clearValue = {1.0f, 1.0f};
+  depthAttachment.depthOps = {LoadOp::CLEAR, StoreOp::STORE};
+
   RenderPass pass = CommandEncoderBeginRenderPass(
       encoder, (RenderPassDescriptor){
                    .colorAttachmentsCount = 1,
                    .colorAttachments = &colorAttachment,
+                   .depthStencilAttachmentsCount = 1,
+                   .depthStencilAttachments = &depthAttachment
                });
+  using Math::mat4;
+  using Math::vec3;
+  
+  uint32_t width = getWindowWidth();
+  uint32_t height = getWindowHeight();
+
+  mat4 view = Math::lookAt(
+      vec3(sin(time) * 6.0f, 3.0f, cos(time ) * 6.0f),
+      vec3(0.0f, 0.0, 0.0f), vec3(0.0f, 1.0f, 0.0f));
+
+  mat4 proj = Math::perspective(radians(45.0f), width / (height+0.001), 0.1f, 100.0f);
+
+  mat4 transform = proj * view;
+  QueueWriteBuffer(queue, uniformBuffer, 0, (char *)&transform, sizeof(mat4));
+
   RenderPassEncoderSetPipeline(pass, pipeline);
   RenderPassEncoderSetBindGroup(pass, 0, bindGroup, 0, nullptr);
   RenderPassEncoderSetVertexBuffer(pass, 0, vtxBuffer, 0, cubeVertexArraySize);
   RenderPassEncoderDraw(pass, cubeVertexCount);
   RenderPassEncoderEnd(pass);
+  RenderPassEncoderRelease(pass);
   CommandBuffer finish = CommandEncoderFinish(encoder, nullptr);
+  CommandEncoderRelease(encoder);
   QueueSubmit(queue, 1, finish);
 
   CommandBufferRelease(finish);
-  CommandEncoderRelease(encoder);
   TextureViewRelease(textureView);
-  RenderPassEncoderRelease(pass);
+  TextureViewRelease(depthView);
 };
 
 extern "C" auto wasm_main() -> void {
@@ -173,6 +199,8 @@ extern "C" auto wasm_main() -> void {
     return;
   }
   create_arena(&transfer_arena, 64 * 1024 * 1024);
+
+  puts("wasm_main");
 
   ShaderModule fragmentShader = CreateShaderModule(device, fragmentCode);
   ShaderModule vertexShader = CreateShaderModule(device, vertexCode);
@@ -195,9 +223,12 @@ extern "C" auto wasm_main() -> void {
 
   BufferUnmap(vtxBuffer);
 
+
+
   build_pipeline();
 
   queue = DeviceGetQueue(device);
+
 #ifdef __wasm__
   request_animation_frame((void *)render_loop);
 #endif
