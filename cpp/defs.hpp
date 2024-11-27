@@ -1,9 +1,14 @@
 #pragma once
 
+#include "stdint.h"
+
 using ssize_t = long;
 using size_t = __SIZE_TYPE__;
 using ptrdiff_t = __PTRDIFF_TYPE__;
 
+
+extern "C" uint32_t getWindowWidth();
+extern "C" uint32_t getWindowHeight();
 
 enum StorageTexureAccess {
   WRITE_ONLY,
@@ -25,11 +30,11 @@ enum SamplerBindingType { FILTERING, NON_FILTERING, COMPARISON };
 
 enum BindGroupLayoutEntryType { BUFFER, SAMPLER, TEXTURE, STORAGE_TEXTURE };
 
-enum ShaderStage { COMPUTE = 1, FRAGMENT = 2, VERTEX = 4 };
+enum ShaderStage { COMPUTE = 4, FRAGMENT = 2, VERTEX = 1 };
 
-enum LoadOp { CLEAR, LOAD };
+enum LoadOp { CLEAR = 0, LOAD };
 
-enum StoreOp { STORE, DISCARD };
+enum StoreOp { STORE = 0, DISCARD };
 
 enum GPUPrimitiveTopology {
   POINT_LIST,
@@ -39,8 +44,25 @@ enum GPUPrimitiveTopology {
   TRIANGLE_STRIP,
 };
 
+enum class TextureDimension {
+  d1D,
+  d2D,
+  d3D
+};
+
+enum CompareFunction {
+    Never = 0,
+    Less,
+    Equal,
+    LessEqual,
+    Greater,
+    NotEqual,
+    GreaterEqual,
+    Always,
+};
+
 enum TextureFormat {
-  R8Unorm = 0,
+  R8Unorm = 1,
   R8Snorm,
   R8Uint,
   R8Sint,
@@ -130,6 +152,20 @@ enum class BufferUsage : size_t {
   STORAGE = 128,
   INDIRECT = 256,
   QUERY_RESOLVE = 512
+};
+
+enum class TextureAspect {
+ALL,
+STENCIL_ONLY,
+DEPTH_ONLY
+};
+
+enum class TextureUsage : size_t {
+   COPY_SRC          = 0x01,
+   COPY_DST          = 0x02,
+   TEXTURE_BINDING   = 0x04,
+   STORAGE_BINDING   = 0x08,
+   RENDER_ATTACHMENT = 0x10
 };
 
 static size_t operator|(BufferUsage a, BufferUsage b) {
