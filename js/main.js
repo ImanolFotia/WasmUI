@@ -160,7 +160,7 @@ async function init(wasmPath) {
             document.querySelector('canvas').style.display = 'none';
             document.getElementById("fps").style.display = 'none';
             WasmContext.deviceAvailable = false;
-            return;
+            abort();
         }
 
 
