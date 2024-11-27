@@ -19,14 +19,31 @@ function wasm_print(heap_base) {
     const str = getString(heap_base);
     console.log(str);
 }
-
+let lastTime = 0.0;
+let updateFps = 1.0
+let numFrames = 0
+let accumFrameTime = 0
 function request_animation_frame(clbk) {
-    function loop(time) {
-        WasmContext["vtable"].get(clbk)(1569)
-        window.requestAnimationFrame(loop);
+    lastTime = Date.now() / 1000.0
+    function loop() {
+        let t = Date.now() / 1000.0;
+        var dt = t - lastTime;
+        lastTime = t;
+        updateFps += dt
+        numFrames++
+        accumFrameTime += dt
+        if(updateFps >= 1.0) {
+            let avgFrametime = accumFrameTime/numFrames
+            document.getElementById("framerate").textContent = Math.trunc(1.0/avgFrametime) + " [" + (avgFrametime*1000).toFixed(3) + "ms]";
+            updateFps=0;
+            numFrames=0
+            accumFrameTime=0
+        }
+        WasmContext["vtable"].get(clbk)(dt)
+        setTimeout(loop, 1000.0/60.0);
     }
 
-    window.requestAnimationFrame(loop);
+    setTimeout(loop, 0);
 }
 
 function sbrk(increment) {
@@ -64,6 +81,16 @@ function ieee32ToFloat(intval) {
     return fval;
 }
 
+let time = function () { return Date.now() / 1000 }
+
+let getWindowWidth = function() {
+    return WasmWindow.width
+}
+
+let getWindowHeight = function() {
+    return WasmWindow.height
+}
+
 function createEnvironment() {
 
     return {
@@ -97,10 +124,14 @@ function createEnvironment() {
         "wgpuReleaseBindGroup": wgpuReleaseBindGroup,
         "wgpuCreateBindGroup": wgpuCreateBindGroup,
         "wgpuRenderPassEncoderSetBindGroup": wgpuRenderPassEncoderSetBindGroup,
+        "wgpuQueueWriteBuffer": wgpuQueueWriteBuffer,
+        "wgpuCreateTexture": wgpuCreateTexture,
+        "wgpuCreateTextureView": wgpuCreateTextureView,
         "request_animation_frame": request_animation_frame,
-        "trunc": Math.trunc,
+        "getWindowWidth": getWindowWidth,
+        "getWindowHeight": getWindowHeight,
 
-        "time": function (ptr) { var ret = (Date.now() / 1000) | 0; if (ptr) WasmContext["heapViewu32"][ptr >> 2] = ret; return ret; },
+        "time": time,
         "gettimeofday": function (ptr) { var now = Date.now(); WasmContext["heapViewu32"][ptr >> 2] = (now / 1000) | 0; WasmContext["heapViewu32"][(ptr + 4) >> 2] = ((now % 1000) * 1000) | 0; },
 
         "ceil": Math.ceil,
@@ -130,6 +161,7 @@ async function init(wasmPath) {
             WasmContext.deviceAvailable = false;
             return;
         }
+
 
         GlobalGPUContext["device"] = device;
 
@@ -162,6 +194,9 @@ async function init(wasmPath) {
 
 
         if (instance.exports.__wasm_call_ctors) instance.exports.__wasm_call_ctors();
+
+        WasmWindow.width = GlobalGPUContext.context.canvas.width;
+        WasmWindow.height = GlobalGPUContext.context.canvas.height;
 
         instance.exports.wasm_main();
 
