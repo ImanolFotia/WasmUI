@@ -44,7 +44,7 @@ struct vec3 {
 
 struct vec4 {
   vec4() = default;
-  vec4(float v) : x{v}, y{v}, z{v} {}
+  vec4(float v) : x{v}, y{v}, z{v}, w{v} {}
 
   vec4(float x, float y, float z, float w) : x{x}, y{y}, z{z}, w{w} {}
 
