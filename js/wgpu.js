@@ -309,7 +309,7 @@ var C_STRUCT = {
     RenderPipelineDescriptor: 208,
     Operations: 8,
     RenderPassColorAttachment: 40,
-    RenderPassDepthStencilAttachment: 8*4,
+    RenderPassDepthStencilAttachment: 8 * 4,
     RenderPassTimestampWrites: 16,
     RenderPassDescriptor: 56,
     BufferDescriptor: 24,
@@ -359,7 +359,7 @@ let wgpuCreateRenderPipeline = function (device_id, pipelineInfo) {
                 depthStencil: depthStencil
             }
         ));
-    } catch (error) { 
+    } catch (error) {
         console.error("An error has ocurred:", error)
         abort();
     }
@@ -588,9 +588,9 @@ let wgpuCreateTexture = function (device_id, descriptor) {
     let mem = getPointer(descriptor, C_STRUCT.TextureDescriptor);
 
     size = []
-    if(mem[5] === 0) size = [mem[0]]
-    else if(mem[5] === 1) size = [mem[0], mem[1]]
-    else if(mem[5] === 2) size = [mem[0], mem[1], mem[2]]
+    if (mem[5] === 0) size = [mem[0]]
+    else if (mem[5] === 1) size = [mem[0], mem[1]]
+    else if (mem[5] === 2) size = [mem[0], mem[1], mem[2]]
 
     return GlobalGPUContext.register(device.createTexture({
         size: size,
@@ -656,11 +656,20 @@ async function initWebGpu() {
 
     GlobalGPUContext["context"] = ctx;
 
-    const adapter = await navigator.gpu.requestAdapter().catch((err) => {
-        WasmContext.adapterAvailable = false;
-    })
-    if (adapter === undefined || adapter === null) { WasmContext.adapterAvailable = false; return undefined }
-    return await adapter.requestDevice();
+    try {
+        const adapter = await navigator.gpu.requestAdapter().catch((err) => {
+            WasmContext.adapterAvailable = false;
+        })
+        if (adapter === undefined || adapter === null) { WasmContext.adapterAvailable = false; return undefined }
+        return await adapter.requestDevice();
+    } catch (error) {
+        console.log(error)
+        document.getElementById("not_available").style.display = 'flex';
+        document.querySelector('canvas').style.display = 'none';
+        document.getElementById("fps").style.display = 'none';
+        WasmContext.deviceAvailable = false;
+        abort();
+    }
 }
 
 var getPipelineLayoutDescriptor = function (mem) {
@@ -756,12 +765,12 @@ var getDepthAttachment = function (mem) {
         attachments = {
             view: GlobalGPUContext.get(ptr[0 + i]).object,
             depthLoadOp: LoadOpName[ptr[1 + i]],
-            depthStoreOp: StoreOpName[ptr[2+ i]],
+            depthStoreOp: StoreOpName[ptr[2 + i]],
             stencilLoadOp: LoadOpName[ptr[3 + i]],
-            stencilStoreOp: StoreOpName[ptr[4+ i]],
-            depthClearValue: ieee32ToFloat(ptr[5+ i]),
-            stencilClearValue: ieee32ToFloat(ptr[6+ i]),
-            readOnly: ptr[7+ i]
+            stencilStoreOp: StoreOpName[ptr[4 + i]],
+            depthClearValue: ieee32ToFloat(ptr[5 + i]),
+            stencilClearValue: ieee32ToFloat(ptr[6 + i]),
+            readOnly: ptr[7 + i]
         };
     }
     return attachments;
