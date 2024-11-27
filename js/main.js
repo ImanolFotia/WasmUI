@@ -158,6 +158,7 @@ async function init(wasmPath) {
         if (device === undefined || device == null) {
             document.getElementById("not_available").style.display = 'flex';
             document.querySelector('canvas').style.display = 'none';
+            document.getElementById("fps").style.display = 'none';
             WasmContext.deviceAvailable = false;
             return;
         }
