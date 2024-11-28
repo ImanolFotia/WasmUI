@@ -11,9 +11,6 @@ struct TextureSize {
 
 extern "C" void request_animation_frame(void *);
 
-extern "C" {
-Arena transfer_arena;
-}
 
 const char *vertexCode =
     R"(
@@ -198,9 +195,6 @@ extern "C" auto wasm_main() -> void {
     puts("Error opening device.");
     return;
   }
-  create_arena(&transfer_arena, 64 * 1024 * 1024);
-
-  puts("wasm_main");
 
   ShaderModule fragmentShader = CreateShaderModule(device, fragmentCode);
   ShaderModule vertexShader = CreateShaderModule(device, vertexCode);
@@ -208,7 +202,7 @@ extern "C" auto wasm_main() -> void {
   vtxBuffer = CreateBuffer(
       device,
       {.size = cubeVertexArraySize,
-       .usage = (BufferUsage)(BufferUsage::VERTEX | BufferUsage::COPY_DST),
+       .usage = (BufferUsage)(BufferUsage::VERTEX),
        .mappedAtCreation = true});
 
   uniformBuffer = CreateBuffer(
