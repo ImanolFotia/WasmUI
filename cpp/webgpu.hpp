@@ -1,8 +1,8 @@
 #pragma once
 
 #include "defs.hpp"
-#include "string.hpp"
 #include "math/vector.hpp"
+#include "string.hpp"
 #include <stdint.h>
 
 namespace wgpu {
@@ -190,7 +190,7 @@ struct RenderPassDepthStencilAttachment {
   Operations depthOps;
   Operations stencilOps;
   DepthStencilClearValue clearValue;
-  bool readOnly = true;
+  bool readOnly = false;
 };
 
 struct RenderPassTimestampWrites {
@@ -211,7 +211,7 @@ struct RenderPassDescriptor {
 struct BufferDescriptor {
   uint32_t size{};
   BufferUsage usage{};
-  bool mappedAtCreation{};
+  bool mappedAtCreation = true;
 };
 
 struct BindGroupLayoutEntry {
@@ -226,6 +226,25 @@ struct BindGroupLayoutEntry {
 struct BindGroupLayoutDescriptor {
   uint32_t entryCount;
   BindGroupLayoutEntry *entries;
+};
+
+struct SamplerDescriptor {
+  AddressMode address_mode_u;
+  AddressMode address_mode_v;
+  AddressMode address_mode_w;
+
+  FilterMode mag_filter;
+  FilterMode min_filter;
+  FilterMode mipmap_filter;
+
+  float lod_min_clamp;
+  float lod_max_clamp;
+
+  CompareFunction compare;
+
+  uint32_t anisotropy_clamp;
+
+  SamplerBorderColor border_color;
 };
 
 struct BindingResource {
@@ -248,27 +267,27 @@ struct BindGroupDescriptor {
 };
 
 struct TextureViewDescriptor {
-    TextureFormat format;
-    uint32_t dimension;
-    TextureAspect aspect;
-    uint32_t baseMipLevel;
-    uint32_t mipLevelCount;
-    uint32_t baseArrayLayer;
-    uint32_t arrayLayerCount;
+  TextureFormat format;
+  uint32_t dimension;
+  TextureAspect aspect;
+  uint32_t baseMipLevel;
+  uint32_t mipLevelCount;
+  uint32_t baseArrayLayer;
+  uint32_t arrayLayerCount;
 };
 
 struct TextureSize {
-    int size[3];
+  int size[3] = {0, 0, 0};
 };
 
 struct TextureDescriptor {
-    TextureSize size;
-    uint32_t mipLevelCount = 1;
-    uint32_t sampleCount = 1;
-    TextureDimension dimension;
-    TextureFormat format;
-    TextureUsage usage;
-    //view_formats: &'a [TextureFormat],
+  TextureSize size;
+  uint32_t mipLevelCount = 1;
+  uint32_t sampleCount = 1;
+  TextureDimension dimension;
+  TextureFormat format;
+  TextureUsage usage;
+  // view_formats: &'a [TextureFormat],
 };
 
 // #pragma pack(pop)
@@ -299,7 +318,8 @@ void wgpuRenderPassEncoderSetVertexBuffer(RenderPass, uint32_t, Buffer,
                                           uint32_t, uint32_t);
 void wgpuDestroyBuffer(Buffer);
 
-BindGroupLayout wgpuDeviceCreateBindGroupLayout(Device, BindGroupLayoutDescriptor);
+BindGroupLayout wgpuDeviceCreateBindGroupLayout(Device,
+                                                BindGroupLayoutDescriptor);
 
 void *wgpuBufferGetMappedRange(Buffer, uint32_t, uint32_t);
 void wgpuBufferUnmap(Buffer);
@@ -307,13 +327,16 @@ void wgpuReleaseBindGroupLayout(BindGroupLayout layout);
 void wgpuReleasePipelineLayout(PipelineLayout layout);
 BindGroup wgpuCreateBindGroup(Device, BindGroupDescriptor);
 void wgpuReleaseBindGroup(BindGroup);
-void wgpuRenderPassEncoderSetBindGroup(RenderPass, uint32_t, BindGroup, uint32_t, void*);
+void wgpuRenderPassEncoderSetBindGroup(RenderPass, uint32_t, BindGroup,
+                                       uint32_t, void *);
 
-void wgpuQueueWriteBuffer(Queue, Buffer, size_t, void*, size_t);
+void wgpuQueueWriteBuffer(Queue, Buffer, size_t, void *, size_t);
 
 Texture wgpuCreateTexture(Device, TextureDescriptor);
 
-TextureView wgpuCreateTextureView(Texture, TextureDescriptor*);
+TextureView wgpuCreateTextureView(Texture, TextureDescriptor *);
+void wgpuQueueCopyExternalImageToTexture(Queue, void *, Texture, TextureSize);
+Sampler wgpuCreateSampler(Device, SamplerDescriptor);
 }
 } // namespace imports
 
@@ -396,20 +419,58 @@ static void *BufferGetMappedRange(Buffer buffer, uint32_t offset,
 
 static void BufferUnmap(Buffer buffer) { imports::wgpuBufferUnmap(buffer); }
 
-static BindGroupLayout CreateBindGroupLayout(Device device, BindGroupLayoutDescriptor descriptor) { return imports::wgpuDeviceCreateBindGroupLayout(device, descriptor); }
+static BindGroupLayout
+CreateBindGroupLayout(Device device, BindGroupLayoutDescriptor descriptor) {
+  return imports::wgpuDeviceCreateBindGroupLayout(device, descriptor);
+}
 
-static void ReleaseBindGroupLayout(BindGroupLayout layout) {imports::wgpuReleaseBindGroupLayout(layout);}
-static void ReleasePipelineLayout(PipelineLayout layout) { imports::wgpuReleasePipelineLayout(layout); }
+static void ReleaseBindGroupLayout(BindGroupLayout layout) {
+  imports::wgpuReleaseBindGroupLayout(layout);
+}
+static void ReleasePipelineLayout(PipelineLayout layout) {
+  imports::wgpuReleasePipelineLayout(layout);
+}
 
-static BindGroup CreateBindGroup(Device device, BindGroupDescriptor descriptor) { return imports::wgpuCreateBindGroup(device, descriptor); }
-static void ReleaseBindGroup(BindGroup bindGroup) { imports::wgpuReleaseBindGroup(bindGroup); };
-static PipelineLayout CreatePipelineLayout(Device device, PipelineLayoutDescriptor layout_descriptor) { return imports::wgpuCreatePipelineLayout(device, layout_descriptor); };
+static BindGroup CreateBindGroup(Device device,
+                                 BindGroupDescriptor descriptor) {
+  return imports::wgpuCreateBindGroup(device, descriptor);
+}
+static void ReleaseBindGroup(BindGroup bindGroup) {
+  imports::wgpuReleaseBindGroup(bindGroup);
+};
+static PipelineLayout
+CreatePipelineLayout(Device device,
+                     PipelineLayoutDescriptor layout_descriptor) {
+  return imports::wgpuCreatePipelineLayout(device, layout_descriptor);
+};
 
-static void RenderPassEncoderSetBindGroup(RenderPass passId, uint32_t index, BindGroup bindGroup, uint32_t dynamicOffsetCount, void* dynamicOffset) { imports::wgpuRenderPassEncoderSetBindGroup(passId, index, bindGroup, dynamicOffsetCount, dynamicOffset); }
-static void QueueWriteBuffer(Queue queue, Buffer buffer, size_t offset, void* data, size_t size) {imports::wgpuQueueWriteBuffer(queue, buffer, offset, data, size); }
-static Texture CreateTexture(Device device, TextureDescriptor descriptor){ return imports::wgpuCreateTexture(device, descriptor); }
+static void RenderPassEncoderSetBindGroup(RenderPass passId, uint32_t index,
+                                          BindGroup bindGroup,
+                                          uint32_t dynamicOffsetCount,
+                                          void *dynamicOffset) {
+  imports::wgpuRenderPassEncoderSetBindGroup(passId, index, bindGroup,
+                                             dynamicOffsetCount, dynamicOffset);
+}
+static void QueueWriteBuffer(Queue queue, Buffer buffer, size_t offset,
+                             void *data, size_t size) {
+  imports::wgpuQueueWriteBuffer(queue, buffer, offset, data, size);
+}
+static Texture CreateTexture(Device device, TextureDescriptor descriptor) {
+  return imports::wgpuCreateTexture(device, descriptor);
+}
 
-static TextureView CreateTextureView(Texture texture, TextureDescriptor* descriptor = nullptr){ return imports::wgpuCreateTextureView(texture, descriptor); }
+static TextureView CreateTextureView(Texture texture,
+                                     TextureDescriptor *descriptor = nullptr) {
+  return imports::wgpuCreateTextureView(texture, descriptor);
+}
 
+static void QueueCopyExternalImageToTexture(Queue queue, void *source,
+                                            Texture texture, TextureSize size) {
+  imports::wgpuQueueCopyExternalImageToTexture(queue, source, texture, size);
+}
+
+static Sampler CreateSampler(Device device, SamplerDescriptor descriptor) {
+  return imports::wgpuCreateSampler(device, descriptor);
+}
 
 } // namespace wgpu
