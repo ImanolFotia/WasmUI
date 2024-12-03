@@ -28,4 +28,4 @@ private:
 };
 
 
-extern "C" void puts(JsString);
+extern "C" int puts(JsString);
