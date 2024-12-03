@@ -45,6 +45,12 @@ var LoadOpName = [
 
 ];
 
+
+var SamplerBindingType = [ 
+    "filtering", 
+    "non-filtering", 
+    "comparison" ];
+
 var LoadOpMap = [
     { "clear": 0 },
     { "load": 1 },
@@ -164,6 +170,25 @@ var TextureFormatName = [
 ];
 
 
+var TextureSampleType = [
+    "float",
+    "unfilterable_float",
+    "depth",
+    "sint",
+    "uint"
+];
+
+
+var TextureViewDimension = [
+    "1d", 
+    "2d", 
+    /*"2d_array", 
+    "cube", 
+    "cube_array", */
+    "3d"
+]
+
+
 var VertexFormatName = [
     "uint8x2",
     "uint8x4",
@@ -205,6 +230,27 @@ var VertexFormatName = [
 var DimensionName = [
     "1d", "2d", "3d"
 ]
+
+
+var AddressMode = [
+    "clamp-to-edge",
+    "repeat",
+    "mirror-repeat",
+    "clamp-to-border",
+  ]
+  
+  var SamplerBorderColor = [
+    "none",
+    "transparent-black",
+    "opaque-black",
+    "opaque-white",
+    "zero",
+  ]
+
+  var FilterMode = [
+    "nearest",
+    "linear",
+  ];
 
 var iota = 0;
 var TextureFormatMap = {
@@ -318,7 +364,8 @@ var C_STRUCT = {
     BindGroupDescriptor: 12,
     BindGroupEntry: 12,
     BindingResource: 20,
-    TextureDescriptor: 32
+    TextureDescriptor: 32,
+    SamplerDescriptor: 44
 }
 
 let wgpuGetDevice = function () {
@@ -373,12 +420,13 @@ let wgpuDeviceCreateBindGroupLayout = function (device_id, ld_id) {
     let entries = []
     for (var i = 0; i < numEntries; i++) {
         let entry = {}
-        entry.binding = entries_ptr[numEntries * i + 0];
-        entry.visibility = entries_ptr[numEntries * i + 1];
-        if (entries_ptr[numEntries * i + 2] != 0) entry.buffer = getBufferEntry(entries_ptr[numEntries * i + 2]);
+        var base = i * 6
+        entry.binding = entries_ptr[base + 0];
+        entry.visibility = entries_ptr[base + 1];
+        if (entries_ptr[base+ 2] != 0) entry.buffer = getBufferEntry(entries_ptr[base+ 2]);
         //TODO: IMPLEMENT THE REST
-        //else if (entries_ptr[numEntries * i + 3] != 0) entry.sampler = getSamplerEntry(entries_ptr[numEntries * i + 3]);
-        //else if (entries_ptr[numEntries * i + 4] != 0) entry.texture = getTextureEntry(entries_ptr[numEntries * i + 4]);
+        else if (entries_ptr[base + 3] != 0) entry.sampler = getSamplerEntry(entries_ptr[base+ 3]);
+        else if (entries_ptr[base + 4] != 0) entry.texture = getTextureEntry(entries_ptr[base + 4]);
         //else if (entries_ptr[numEntries * i + 5] != 0) entry.storageTexture = getStorageTexEntry(entries_ptr[numEntries * i + 5]);
         entries.push(entry);
     }
@@ -404,6 +452,25 @@ function getBufferEntry(ptr) {
         hasDynamicOffset: entry_ptr[1],
         minBindingSize: entry_ptr[2]
     };
+}
+
+function getSamplerEntry(ptr) {
+
+    var entry_ptr = getPointer(ptr, 4);
+    return {
+        type: SamplerBindingType[entry_ptr[0]]
+    }
+}
+
+function getTextureEntry(ptr) {
+
+    var entry_ptr = getPointer(ptr, 12);
+    
+    return {
+        sampleType: TextureSampleType[entry_ptr[0]],
+        viewDimension: TextureViewDimension[entry_ptr[1]],
+        multisampled: entry_ptr[2] != 0
+    }
 }
 
 let wgpuGetPreferredCanvasFormat = function () {
@@ -551,17 +618,18 @@ let wgpuCreateBindGroup = function (device_id, desc) {
     let entries_ptr = getPointer(descriptor[2], C_STRUCT.BindGroupEntry * entryCount);
     let entries = []
     for (var i = 0; i < entryCount; i++) {
+        var base = i * 6
         //let entryResource = getPointer(entries_ptr[entryCount * i + 1], entryCount*C_STRUCT.BindingResource);
-        let resource = {}
-        if (entries_ptr[entryCount * i + 1] != 0) resource.textureView = GlobalGPUContext.get(entries_ptr[entryCount * i + 1]).object;
-        else if (entries_ptr[entryCount * i + 2] != 0) resource.sampler = GlobalGPUContext.get(entries_ptr[entryCount * i + 2]).object;
-        else if (entries_ptr[entryCount * i + 3] != 0) {
-            resource.buffer = GlobalGPUContext.get(entries_ptr[entryCount * i + 3]).object;
-            resource.offset = entries_ptr[entryCount * i + 4];
-            resource.size = entries_ptr[entryCount * i + 5];
+        var resource = {}
+        if (entries_ptr[base + 1] != 0) resource = GlobalGPUContext.get(entries_ptr[base + 1]).object;
+        else if (entries_ptr[base + 2] != 0) resource = GlobalGPUContext.get(entries_ptr[base + 2]).object;
+        else if (entries_ptr[base + 3] != 0) {
+            resource.buffer = GlobalGPUContext.get(entries_ptr[base + 3]).object;
+            resource.offset = entries_ptr[base+ 4];
+            resource.size = entries_ptr[base + 5];
         }
         entries.push({
-            binding: entries_ptr[entryCount * i + 0],
+            binding: entries_ptr[base + 0],
             resource: resource
         })
     }
@@ -599,6 +667,31 @@ let wgpuCreateTexture = function (device_id, descriptor) {
         dimension: DimensionName[mem[5]],
         format: TextureFormatName[mem[6]],
         usage: mem[7]
+    }));
+}
+
+let wgpuQueueCopyExternalImageToTexture = function (queue_id, source, texture, size_info) {
+    let queue = GlobalGPUContext.get(queue_id).object;
+    let size_ptr = getPointer(size_info, 3 * 4);
+
+    size = []
+    if (size_ptr[0] > 0) size.push(size_ptr[0])
+    if (size_ptr[1] > 0) size.push(size_ptr[1])
+    if (size_ptr[2] > 0) size.push(size_ptr[2])
+
+    queue.copyExternalImageToTexture(
+        { source: promiseMgr.get(source).promise },
+        { texture: GlobalGPUContext.get(texture).object },
+        size
+    )
+}
+
+let wgpuCreateSampler = function(device_id, descriptor_ptr) {
+    let device = GlobalGPUContext.get(device_id).object;
+    let descriptor = getPointer(descriptor_ptr, C_STRUCT.SamplerDescriptor);
+    return GlobalGPUContext.register(device.createSampler({
+        magFilter: FilterMode[descriptor[3]],
+        minFilter: FilterMode[descriptor[4]]
     }));
 }
 
@@ -793,7 +886,7 @@ var getBufferDescriptor = function (offset) {
     return {
         size: mem[0],
         usage: mem[1],
-        mappedAtCreation: mem[2] == 1 ? true : false,
+        mappedAtCreation: mem[2],
     };
 
 }
