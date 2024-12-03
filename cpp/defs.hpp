@@ -1,11 +1,10 @@
 #pragma once
 
-#include "stdint.h"
+#include <stdint.h>
 
 using ssize_t = long;
 using size_t = __SIZE_TYPE__;
 using ptrdiff_t = __PTRDIFF_TYPE__;
-
 
 extern "C" uint32_t getWindowWidth();
 extern "C" uint32_t getWindowHeight();
@@ -18,13 +17,33 @@ enum StorageTexureAccess {
 
 enum TextureViewDimension { d1D, d2D, d2D_ARRAY, dCUBE, dCUBE_ARRAY, d3D };
 
-enum BufferBindingType {
-  UNIFORM,
-  STORAGE,
-  READ_ONLY_STORAGE
+enum BufferBindingType { UNIFORM, STORAGE, READ_ONLY_STORAGE };
+
+enum AddressMode {
+  CLAMPTOEDGE = 0,
+  REPEAT = 1,
+  MIRRORREPEAT = 2,
+  CLAMPTOBORDER = 3,
+};
+enum FilterMode {
+  NEAREST = 0,
+  LINEAR = 1,
+};
+enum SamplerBorderColor {
+  NONE,
+  TRANSPARENTBLACK,
+  OPAQUEBLACK,
+  OPAQUEWHITE,
+  ZERO,
 };
 
-enum TextureSampleType { FLOAT, UNFILTERABLE_FLOAT, DEPTH, SINT, UINT };
+enum TextureSampleType {
+  FLOAT,
+  UNFILTERABLE_FLOAT,
+  DEPTH,
+  SINT,
+  UINT
+};
 
 enum SamplerBindingType { FILTERING, NON_FILTERING, COMPARISON };
 
@@ -44,21 +63,17 @@ enum GPUPrimitiveTopology {
   TRIANGLE_STRIP,
 };
 
-enum class TextureDimension {
-  d1D,
-  d2D,
-  d3D
-};
+enum class TextureDimension { d1D, d2D, d3D };
 
 enum CompareFunction {
-    Never = 0,
-    Less,
-    Equal,
-    LessEqual,
-    Greater,
-    NotEqual,
-    GreaterEqual,
-    Always,
+  Never = 0,
+  Less,
+  Equal,
+  LessEqual,
+  Greater,
+  NotEqual,
+  GreaterEqual,
+  Always,
 };
 
 enum TextureFormat {
@@ -154,26 +169,30 @@ enum class BufferUsage : size_t {
   QUERY_RESOLVE = 512
 };
 
-enum class TextureAspect {
-ALL,
-STENCIL_ONLY,
-DEPTH_ONLY
-};
-
-enum class TextureUsage : size_t {
-   COPY_SRC          = 0x01,
-   COPY_DST          = 0x02,
-   TEXTURE_BINDING   = 0x04,
-   STORAGE_BINDING   = 0x08,
-   RENDER_ATTACHMENT = 0x10
-};
-
 static size_t operator|(BufferUsage a, BufferUsage b) {
   return (size_t)a | (size_t)b;
 }
 
 static size_t operator&(BufferUsage a, BufferUsage b) {
   return (size_t)a & (size_t)b;
+}
+
+enum class TextureAspect { ALL, STENCIL_ONLY, DEPTH_ONLY };
+
+enum class TextureUsage : size_t {
+  COPY_SRC = 0x01,
+  COPY_DST = 0x02,
+  TEXTURE_BINDING = 0x04,
+  STORAGE_BINDING = 0x08,
+  RENDER_ATTACHMENT = 0x10
+};
+
+static TextureUsage operator|(TextureUsage a, TextureUsage b) {
+  return (TextureUsage)((size_t)a | (size_t)b);
+}
+
+static TextureUsage operator&(TextureUsage a, TextureUsage b) {
+  return (TextureUsage)((size_t)a & (size_t)b);
 }
 
 enum VertexFormat : size_t {
