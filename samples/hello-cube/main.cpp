@@ -6,6 +6,9 @@
 #include <math/matrix.hpp>
 
 extern "C" void request_animation_frame(void *);
+extern "C" FILE fopen(JsString);
+extern "C" void fread(FILE, char *, size_t);
+
 
 
 const char *vertexCode =
@@ -214,9 +217,6 @@ int main(int argc, char** argv) {
   memcpy(data, (void *)cubeVertexArray, cubeVertexArraySize);
 
   BufferUnmap(vtxBuffer);
-
-
-
 
   build_pipeline();
 

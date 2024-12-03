@@ -859,8 +859,8 @@ var getDepthAttachment = function (mem) {
             view: GlobalGPUContext.get(ptr[0 + i]).object,
             depthLoadOp: LoadOpName[ptr[1 + i]],
             depthStoreOp: StoreOpName[ptr[2 + i]],
-            stencilLoadOp: LoadOpName[ptr[3 + i]],
-            stencilStoreOp: StoreOpName[ptr[4 + i]],
+            stencilLoadOp: (ptr[3 + i] >= 0) ? LoadOpName[ptr[3 + i]] : undefined,
+            stencilStoreOp: (ptr[4 + i] >= 0) ? LoadOpName[ptr[3 + i]] : undefined,
             depthClearValue: ieee32ToFloat(ptr[5 + i]),
             stencilClearValue: ieee32ToFloat(ptr[6 + i]),
             readOnly: ptr[7 + i]

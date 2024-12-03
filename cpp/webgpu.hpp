@@ -166,8 +166,8 @@ struct RenderPipelineDescriptor {
 };
 
 struct Operations {
-  LoadOp load;
-  StoreOp store;
+  LoadOp load = (LoadOp)-1;
+  StoreOp store = (StoreOp)-1;
 };
 
 struct Color {
