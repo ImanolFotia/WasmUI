@@ -5,6 +5,7 @@
 
 #include <math/matrix.hpp>
 #include <promise.hpp>
+#include <std/stdio.hpp>
 
 extern "C" void request_animation_frame(void *);
 
@@ -284,6 +285,8 @@ int main(int argc, char **argv) {
   });
 
   build_pipeline();
+
+  tprintf("%, %!", "Hello", "World");
 
 #ifdef __wasm__
   request_animation_frame((void *)render_loop);
