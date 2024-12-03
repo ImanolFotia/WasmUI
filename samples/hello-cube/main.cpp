@@ -5,10 +5,6 @@
 
 #include <math/matrix.hpp>
 
-struct TextureSize {
-  int x, y, z;
-};
-
 extern "C" void request_animation_frame(void *);
 
 
@@ -25,7 +21,8 @@ const char *vertexCode =
     struct VertexIn {
       @location(0) position: vec4f,
       @location(1) color: vec4f,
-      @location(2) uv: vec2f
+      @location(2) uv: vec2f,
+      @location(3) normal: vec3f
     };
     @vertex fn main( vtx: VertexIn ) -> VertexOut {
       var vsOut: VertexOut;
@@ -65,11 +62,12 @@ void build_pipeline() {
 
   VertexBufferLayout bufferLayout;
   bufferLayout.arrayStride = cubeVertexSize;
-  bufferLayout.attributeCount = 3;
-  VertexAttribute attributes[3] = {
+  bufferLayout.attributeCount = 4;
+  VertexAttribute attributes[4] = {
       {.format = Float32x4, .offset = cubePositionOffset, .shaderLocation = 0},
       {.format = Float32x4, .offset = cubeColorOffset, .shaderLocation = 1},
-      {.format = Float32x2, .offset = cubeUVOffset, .shaderLocation = 2}};
+      {.format = Float32x2, .offset = cubeUVOffset, .shaderLocation = 2},
+      {.format = Float32x3, .offset = cubeNormalOffset, .shaderLocation = 3}};
 
   bufferLayout.attributes = attributes;
 
@@ -189,11 +187,11 @@ extern "C" void render_loop(float dt) {
   TextureViewRelease(depthView);
 };
 
-extern "C" auto wasm_main() -> void {
+int main(int argc, char** argv) {
 
   if (device = GetDevice(); device == 0) {
     puts("Error opening device.");
-    return;
+    return 1;
   }
 
   ShaderModule fragmentShader = CreateShaderModule(device, fragmentCode);
@@ -216,6 +214,7 @@ extern "C" auto wasm_main() -> void {
   memcpy(data, (void *)cubeVertexArray, cubeVertexArraySize);
 
   BufferUnmap(vtxBuffer);
+
 
 
 

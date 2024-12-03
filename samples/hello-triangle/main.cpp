@@ -1,15 +1,16 @@
 #include <string.hpp>
 #include <webgpu.hpp>
-
+#include <arena.hpp>
 
 struct TextureSize {
   int x, y, z;
 };
 
-extern "C" void puts(JsString);
 extern "C" void request_animation_frame(void *);
 extern "C" float trunc(float);
 
+extern "C" FILE fopen(JsString);
+extern "C" void fread(FILE, char *, size_t);
 
 const char *vertexCode =
     R"(
@@ -52,6 +53,8 @@ Device device{};
 Pipeline pipeline{};
 Queue queue{};
 
+FILE file;
+
 extern "C" void render_loop(size_t dt) {
   /*char str[5];
 
@@ -62,7 +65,7 @@ extern "C" void render_loop(size_t dt) {
   str[4] = 0;
 
   print(str);*/
-  //float t = (float)dt;
+  // float t = (float)dt;
   //(void)t;
 
   CommandEncoder encoder = CreateCommandEncoder(device);
@@ -74,11 +77,11 @@ extern "C" void render_loop(size_t dt) {
   colorAttachment.clearValue = {0.0f, 0.0f, 0.0, 1.0};
   colorAttachment.operations = {LoadOp::CLEAR, StoreOp::STORE};
 
-  RenderPass pass = CommandEncoderBeginRenderPass(encoder,
-                                                 (RenderPassDescriptor){
-                                                  .colorAttachmentsCount = 1,
-                                                  .colorAttachments = &colorAttachment,
-                                                });
+  RenderPass pass = CommandEncoderBeginRenderPass(
+      encoder, (RenderPassDescriptor){
+                   .colorAttachmentsCount = 1,
+                   .colorAttachments = &colorAttachment,
+               });
   RenderPassEncoderSetPipeline(pass, pipeline);
   RenderPassEncoderDraw(pass, 3);
   RenderPassEncoderEnd(pass);
@@ -89,13 +92,14 @@ extern "C" void render_loop(size_t dt) {
   CommandEncoderRelease(encoder);
   TextureViewRelease(textureView);
   RenderPassEncoderRelease(pass);
+
 };
 
-extern "C" auto wasm_main() -> void {
+int main(int argc, char** argv) {
 
   if (device = GetDevice(); device == 0) {
     puts("Error opening device.");
-    return;
+    return 1;
   }
 
   ShaderModule fragmentShader = CreateShaderModule(device, fragmentCode);
@@ -106,22 +110,17 @@ extern "C" auto wasm_main() -> void {
   target.format = preferredFormat;
 
   RenderPipelineDescriptor info = {
-                       .layout = {},
-                       .vertex = {
-                        .module = vertexShader,
-                        .entryPoint = "main"},
-                       .primitive = { .topology = 
-                           GPUPrimitiveTopology::TRIANGLE_LIST},
-                       .fragment = {
-                        .module = fragmentShader,
-                        .entryPoint = "main",
-                        .targetCount = 1,
-                        .targets = &target}
-};
+      .layout = {},
+      .vertex = {.module = vertexShader, .entryPoint = "main"},
+      .primitive = {.topology = GPUPrimitiveTopology::TRIANGLE_LIST},
+      .fragment = {.module = fragmentShader,
+                   .entryPoint = "main",
+                   .targetCount = 1,
+                   .targets = &target}};
 
   pipeline = CreateRenderPipeline(device, info);
 
   queue = DeviceGetQueue(device);
 
-  request_animation_frame((void*)render_loop);
+  request_animation_frame((void *)render_loop);
 }
