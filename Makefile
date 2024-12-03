@@ -10,7 +10,7 @@ INCLUDE_DIRS:=-I./cpp -I/lib64/clang/18/include
 SOURCE_FILES:=./cpp/string.cpp
 
 
-all: hello-triangle hello-cube io
+all: hello-triangle hello-cube textured-cube io
 
 hello-triangle: 
 	@mkdir -p wasm/$@
@@ -18,6 +18,11 @@ hello-triangle:
 	#@cp wasm/$@/$@.wasm  samples/$@/$@.wasm
 
 hello-cube: 
+	@mkdir -p wasm/$@
+	$(CXX) $(LD_FLAGS) $(CXX_FLAGS) $(INCLUDE_DIRS) $(SOURCE_FILES) -o wasm/$@/$@.wasm samples/$@/main.cpp
+	#@cp wasm/$@/$@.wasm  samples/$@/$@.wasm
+
+textured-cube: 
 	@mkdir -p wasm/$@
 	$(CXX) $(LD_FLAGS) $(CXX_FLAGS) $(INCLUDE_DIRS) $(SOURCE_FILES) -o wasm/$@/$@.wasm samples/$@/main.cpp
 	#@cp wasm/$@/$@.wasm  samples/$@/$@.wasm
