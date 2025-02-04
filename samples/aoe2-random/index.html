@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<title>AoE2 Random</title>
+	<link rel="icon" href="../../media/aoe2/favicon.png" type="image/x-icon" />
+	<link rel="manifest" href="../../manifest.json">
+	<link rel="stylesheet" href="../../css/style.css">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<script type="text/javascript" src="../../js/wgpu.js"></script>
+
+	<style>
+		body {
+			height: 100vh;
+			width: 100wh;
+			background-image: url("../../media/aoe2/background.jpg") !important;
+		}
+	</style>
+
+</head>
+
+<body>
+	<script type="text/javascript" src="../../js/main.js"></script>
+
+	<canvas id="main_canvas"></canvas>
+</body>
+
+<script>
+
+window.onload = () => {
+		if(Context.Debug)
+			init("../../wasm/aoe2-random/aoe2-random.wasm");
+		else
+			init("aoe2-random.wasm");
+	};
+
+</script>
+
+</html>
