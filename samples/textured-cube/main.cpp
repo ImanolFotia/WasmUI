@@ -1,4 +1,4 @@
-#include "cube.hpp"
+// #include "cube.hpp"
 #include <arena.hpp>
 #include <string.hpp>
 #include <webgpu.hpp>
@@ -7,14 +7,15 @@
 #include <promise.hpp>
 #include <std/stdio.hpp>
 
+#include "primitives/cube.hpp"
+
 extern "C" void request_animation_frame(void *);
 extern "C" FILE fopen(JsString);
 extern "C" void fread(FILE, char *, size_t);
 
-
 const char *vertexCode =
-/* wgsl */
-R"(
+    /* wgsl */
+    R"(
 struct Uniforms {
   viewProj : mat4x4f,
   time: f32
@@ -22,23 +23,20 @@ struct Uniforms {
 @binding(0) @group(0) var<uniform> uniforms : Uniforms;
 struct VertexOut {
     @builtin(position) Position: vec4f,
-    @location(0) color: vec4f,
-    @location(1) uv: vec2f,
-    @location(2) normal: vec3f,
-    @location(3) time: f32,
-    @location(4) fragPos: vec3f
+    @location(0) uv: vec2f,
+    @location(1) normal: vec3f,
+    @location(2) time: f32,
+    @location(3) fragPos: vec3f
   }; 
 struct VertexIn {
-  @location(0) position: vec4f,
-  @location(1) color: vec4f,
-  @location(2) uv: vec2f,
-  @location(3) normal: vec3f
+  @location(0) position: vec3f,
+  @location(1) uv: vec2f,
+  @location(2) normal: vec3f
 };
 @vertex fn main( vtx: VertexIn ) -> VertexOut {
   var vsOut: VertexOut;
-  vsOut.Position = uniforms.viewProj * vtx.position;
+  vsOut.Position = uniforms.viewProj * vec4f(vtx.position, 1.0);
   vsOut.fragPos = vsOut.Position.xyz;
-  vsOut.color = vtx.color;
   vsOut.uv = vtx.uv;
   vsOut.normal = vtx.normal;
   vsOut.time = uniforms.time;
@@ -46,15 +44,14 @@ struct VertexIn {
 })";
 
 const char *fragmentCode =
-R"(
+    R"(
 @group(0) @binding(1) var mySampler: sampler;
 @group(0) @binding(2) var myTexture: texture_2d<f32>;
  struct FragmentIn {
-    @location(0) color: vec4f,
-    @location(1) uv: vec2f,
-    @location(2) normal: vec3f,
-    @location(3) time: f32,
-    @location(4) fragPos: vec3f
+    @location(0) uv: vec2f,
+    @location(1) normal: vec3f,
+    @location(2) time: f32,
+    @location(3) fragPos: vec3f
   }; 
   @fragment fn main(fsInput: FragmentIn) -> @location(0) vec4f {
   var albedo: vec3f = textureSample(myTexture, mySampler, fsInput.uv).rgb;
@@ -72,6 +69,7 @@ Device device{};
 Pipeline pipeline{};
 Queue queue{};
 Buffer vtxBuffer{};
+Buffer idxBuffer{};
 Buffer uniformBuffer{};
 BindGroup bindGroup{};
 Texture depthBuffer{};
@@ -83,19 +81,22 @@ struct UniformBuffer {
   float padding[3];
 };
 
+size_t cube_vertex_size = 0;
+size_t cube_index_size = 0;
+size_t indexCount = 0;
+
 void build_pipeline() {
 
   ColorTargetState target;
   target.format = GetPreferredCanvasFormat();
 
   VertexBufferLayout bufferLayout;
-  bufferLayout.arrayStride = cubeVertexSize;
-  bufferLayout.attributeCount = 4;
-  VertexAttribute attributes[4] = {
-      {.format = Float32x4, .offset = cubePositionOffset, .shaderLocation = 0},
-      {.format = Float32x4, .offset = cubeColorOffset, .shaderLocation = 1},
-      {.format = Float32x2, .offset = cubeUVOffset, .shaderLocation = 2},
-      {.format = Float32x3, .offset = cubeNormalOffset, .shaderLocation = 3}};
+  bufferLayout.arrayStride = sizeof(Math::Vertex);
+  bufferLayout.attributeCount = 3;
+  VertexAttribute attributes[3] = {
+      {.format = Float32x3, .offset = offsetof(Math::Vertex, position), .shaderLocation = 0},
+      {.format = Float32x2, .offset = offsetof(Math::Vertex, texCoord), .shaderLocation = 1},
+      {.format = Float32x3, .offset = offsetof(Math::Vertex, normal), .shaderLocation = 2}};
 
   bufferLayout.attributes = attributes;
 
@@ -135,8 +136,12 @@ void build_pipeline() {
   layout_descriptor.bindGroupLayoutCount = 1;
   layout_descriptor.bindGroupLayouts = &bindGroupLayout;
 
-  SamplerDescriptor samplerDesc = {.mag_filter = FilterMode::LINEAR,
-                                   .min_filter = FilterMode::LINEAR};
+  SamplerDescriptor samplerDesc = {
+      .address_mode_u = REPEAT,
+      .address_mode_v = REPEAT,
+      .mag_filter = FilterMode::LINEAR,
+      .min_filter = FilterMode::LINEAR,
+  };
 
   Sampler sampler = CreateSampler(device, samplerDesc);
 
@@ -196,7 +201,7 @@ extern "C" void render_loop(float dt) {
 
   RenderPassColorAttachment colorAttachment;
   colorAttachment.view = textureView;
-  colorAttachment.clearValue = {0.0f, 0.0f, 0.0, 1.0};
+  colorAttachment.clearValue = {0.094117f, 0.094117f, 0.094117, 1.0};
   colorAttachment.operations = {LoadOp::CLEAR, StoreOp::STORE};
 
   RenderPassDepthStencilAttachment depthAttachment;
@@ -216,12 +221,12 @@ extern "C" void render_loop(float dt) {
   uint32_t width = getWindowWidth();
   uint32_t height = getWindowHeight();
 
-  mat4 view =
-      Math::lookAt(vec3(sin(time * 0.5) * 6.0f, 3.0f, cos(time * 0.5) * 6.0f),
-                   vec3(0.0f, 0.0, 0.0f), vec3(0.0f, 1.0f, 0.0f));
+  mat4 view = Math::lookAt(
+      vec3(Math::sin(time * 0.5) * 6.0f, 3.0f, Math::cos(time * 0.5) * 6.0f),
+      vec3(0.0f, 0.0, 0.0f), vec3(0.0f, 1.0f, 0.0f));
 
-  mat4 proj =
-      Math::perspective(radians(45.0f), width / (height + 0.001), 0.1f, 100.0f);
+  mat4 proj = Math::perspective(Math::radians(45.0f), width / (height + 0.001),
+                                0.1f, 100.0f);
 
   mat4 transform = proj * view;
   UniformBuffer uBuffer{.viewProj = transform, .time = time};
@@ -229,8 +234,9 @@ extern "C" void render_loop(float dt) {
 
   RenderPassEncoderSetPipeline(pass, pipeline);
   RenderPassEncoderSetBindGroup(pass, 0, bindGroup, 0, nullptr);
-  RenderPassEncoderSetVertexBuffer(pass, 0, vtxBuffer, 0, cubeVertexArraySize);
-  RenderPassEncoderDraw(pass, cubeVertexCount);
+  RenderPassEncoderSetVertexBuffer(pass, 0, vtxBuffer, 0, cube_vertex_size);
+  RenderPassEncoderSetIndexBuffer(pass, idxBuffer, 0, 0, cube_index_size);
+  RenderPassEncoderDrawIndexed(pass, indexCount);
   RenderPassEncoderEnd(pass);
   RenderPassEncoderRelease(pass);
   CommandBuffer finish = CommandEncoderFinish(encoder, nullptr);
@@ -254,29 +260,46 @@ int main(int argc, char **argv) {
   ShaderModule fragmentShader = CreateShaderModule(device, fragmentCode);
   ShaderModule vertexShader = CreateShaderModule(device, vertexCode);
 
-  vtxBuffer = CreateBuffer(device, {.size = cubeVertexArraySize,
+  engine::Cube cube;
+  indexCount = cube.data().num_indices;
+  cube_vertex_size = cube.data().num_vertices * sizeof(Math::Vertex);
+  cube_index_size = indexCount * sizeof(uint32_t);
+
+  vtxBuffer = CreateBuffer(device, {.size = cube_vertex_size,
                                     .usage = (BufferUsage)(BufferUsage::VERTEX),
                                     .mappedAtCreation = true});
 
-  void *data = BufferGetMappedRange(vtxBuffer, 0, cubeVertexArraySize);
-  memcpy(data, (void *)cubeVertexArray, cubeVertexArraySize);
-  BufferUnmap(vtxBuffer);
+  idxBuffer = CreateBuffer(device, {.size = cube_index_size,
+                                    .usage = (BufferUsage)(BufferUsage::INDEX),
+                                    .mappedAtCreation = true});
 
+  {
+    void *data = BufferGetMappedRange(vtxBuffer, 0, cube_vertex_size);
+    std::memcpy(data, (void *)cube.data().Vertices, cube_vertex_size);
+    BufferUnmap(vtxBuffer);
+  }
+  {
+    void *data = BufferGetMappedRange(idxBuffer, 0, cube_index_size);
+    std::memcpy(data, (void *)cube.data().Indices, cube_index_size);
+    BufferUnmap(idxBuffer);
+  }
   uniformBuffer = CreateBuffer(
       device,
       {.size = 80,
        .usage = (BufferUsage)(BufferUsage::UNIFORM | BufferUsage::COPY_DST),
        .mappedAtCreation = false});
 
-  cubeTexture = CreateTexture(device, 
-      {
-          .size = {512, 512, 0},
-          .dimension = TextureDimension::d2D,
-          .format = TextureFormat::Rgba8Unorm,
-          .usage = TextureUsage::RENDER_ATTACHMENT |
-                   TextureUsage::COPY_DST |
-                   TextureUsage::TEXTURE_BINDING,
-      });
+    BufferUnmap(uniformBuffer);
+
+  cubeTexture =
+      CreateTexture(device, {
+                                .size = {512, 512, 0},
+                                .dimension = TextureDimension::d2D,
+                                .format = TextureFormat::Rgba8Unorm,
+                                .usage = TextureUsage::RENDER_ATTACHMENT |
+                                         TextureUsage::COPY_DST |
+                                         TextureUsage::TEXTURE_BINDING,
+                            });
 
   fetch("../../media/diff.png").then([](Response response) {
     response.blob().then([](Blob blob) {
@@ -289,7 +312,7 @@ int main(int argc, char **argv) {
 
   build_pipeline();
 
-  tprintf("%, %!", "Hello", "World");
+  std::printf("%, %! % %", "Hello", "World", 654, 87.14);
 
 #ifdef __wasm__
   request_animation_frame((void *)render_loop);

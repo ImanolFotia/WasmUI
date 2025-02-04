@@ -1,3 +1,4 @@
+#include <stdio.hpp>
 #include <string.hpp>
 #include <webgpu.hpp>
 #include <arena.hpp>

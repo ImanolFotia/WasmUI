@@ -1,5 +1,6 @@
 #include <arena.hpp>
 #include <string.hpp>
+#include <js_string.hpp>
 #include <stdint.h>
 #include <stddef.h>
 

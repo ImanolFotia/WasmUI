@@ -2,7 +2,7 @@
 #include <arena.hpp>
 #include <string.hpp>
 #include <webgpu.hpp>
-
+#include <stdio.hpp>
 #include <math/matrix.hpp>
 
 extern "C" void request_animation_frame(void *);
@@ -145,7 +145,7 @@ extern "C" void render_loop(float dt) {
 
   RenderPassColorAttachment colorAttachment;
   colorAttachment.view = textureView;
-  colorAttachment.clearValue = {0.0f, 0.0f, 0.0, 1.0};
+  colorAttachment.clearValue = {0.094117f, 0.094117f, 0.094117, 1.0};
   colorAttachment.operations = {LoadOp::CLEAR, StoreOp::STORE};
 
   RenderPassDepthStencilAttachment depthAttachment;
@@ -167,10 +167,10 @@ extern "C" void render_loop(float dt) {
   uint32_t height = getWindowHeight();
 
   mat4 view = Math::lookAt(
-      vec3(sin(time) * 6.0f, 3.0f, cos(time ) * 6.0f),
+      vec3(Math::sin(time) * 6.0f, 3.0f, Math::cos(time ) * 6.0f),
       vec3(0.0f, 0.0, 0.0f), vec3(0.0f, 1.0f, 0.0f));
 
-  mat4 proj = Math::perspective(radians(45.0f), width / (height+0.001), 0.1f, 100.0f);
+  mat4 proj = Math::perspective(Math::radians(45.0f), width / (height+0.001), 0.1f, 100.0f);
 
   mat4 transform = proj * view;
   QueueWriteBuffer(queue, uniformBuffer, 0, (char *)&transform, sizeof(mat4));
@@ -214,7 +214,7 @@ int main(int argc, char** argv) {
 
   void *data = BufferGetMappedRange(vtxBuffer, 0, cubeVertexArraySize);
 
-  memcpy(data, (void *)cubeVertexArray, cubeVertexArraySize);
+  std::memcpy(data, (void *)cubeVertexArray, cubeVertexArraySize);
 
   BufferUnmap(vtxBuffer);
 
