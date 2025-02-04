@@ -358,7 +358,7 @@ var C_STRUCT = {
     RenderPassDepthStencilAttachment: 8 * 4,
     RenderPassTimestampWrites: 16,
     RenderPassDescriptor: 56,
-    BufferDescriptor: 24,
+    BufferDescriptor: 12,
     BindGroupLayoutEntry: 24,
     BindGroupLayoutDescriptor: 8,
     BindGroupDescriptor: 12,
@@ -525,6 +525,11 @@ let wgpuRenderPassEncoderDraw = function (encoder_id, count) {
     encoder.draw(count);
 }
 
+let wgpuRenderPassEncoderDrawIndexed = function (encoder_id, count, instance_count, first_index, base_vertex, first_instance) {
+    var encoder = GlobalGPUContext.get(encoder_id).object;
+    encoder.drawIndexed(count,instance_count, first_index, base_vertex, first_instance);
+}
+
 let wgpuRenderPassEncoderEnd = function (encoder_id) {
     var encoder = GlobalGPUContext.get(encoder_id).object;
     encoder.end();
@@ -602,6 +607,13 @@ let wgpuRenderPassEncoderSetVertexBuffer = function (encoder_id, slot, vertex_bu
     let encoder = GlobalGPUContext.get(encoder_id).object;
     encoder.setVertexBuffer(slot, vertex_buffer, offset, size);
 }
+
+let wgpuRenderPassEncoderSetIndexBuffer = function (encoder_id, index_buffer_id, format, offset, size) {
+    let index_buffer = GlobalGPUContext.get(index_buffer_id).object;
+    let encoder = GlobalGPUContext.get(encoder_id).object;
+    encoder.setIndexBuffer(index_buffer, "uint32", offset, size);
+}
+
 
 let wgpuCreatePipelineLayout = function (device_id, layout_desc) {
     let device = GlobalGPUContext.get(device_id).object;
@@ -690,6 +702,9 @@ let wgpuCreateSampler = function(device_id, descriptor_ptr) {
     let device = GlobalGPUContext.get(device_id).object;
     let descriptor = getPointer(descriptor_ptr, C_STRUCT.SamplerDescriptor);
     return GlobalGPUContext.register(device.createSampler({
+        addressModeU: AddressMode[descriptor[0]],
+        addressModeV: AddressMode[descriptor[1]],
+        addressModeW: AddressMode[descriptor[2]],
         magFilter: FilterMode[descriptor[3]],
         minFilter: FilterMode[descriptor[4]]
     }));
@@ -737,9 +752,10 @@ var GlobalGPUContext = {
 async function initWebGpu() {
 
     const canvas = document.querySelector('canvas');
-    if (canvas === null) {
-        console.error("canvas does not exist...");
-    }
+
+    if(canvas === undefined || canvas === null)
+        return Promise.reject();
+
     const width = window.innerWidth;
     const height = window.innerHeight;
     canvas.width = width;

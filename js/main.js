@@ -24,6 +24,8 @@ let lastTime = 0.0;
 let updateFps = 1.0
 let numFrames = 0
 let accumFrameTime = 0
+let TargetFps = 60;
+let CompensateFps = 0;
 function request_animation_frame(clbk) {
     lastTime = Date.now() / 1000.0
     function loop() {
@@ -35,16 +37,20 @@ function request_animation_frame(clbk) {
         accumFrameTime += dt
         if (updateFps >= 1.0) {
             let avgFrametime = accumFrameTime / numFrames
-            document.getElementById("framerate").textContent = Math.trunc(1.0 / avgFrametime) + " [" + (avgFrametime * 1000).toFixed(3) + "ms]";
+            let fps = Math.trunc(1.0 / avgFrametime);
+            CompensateFps = (CompensateFps + Math.max(TargetFps - fps, 0)) / 2;
+            var fps_el = document.getElementById("framerate");
+            if(fps_el)
+                fps_el.textContent = fps + " [" + (avgFrametime * 1000).toFixed(3) + "ms]";
             updateFps = 0;
             numFrames = 0
             accumFrameTime = 0
         }
         WasmContext["vtable"].get(clbk)(dt)
-        setTimeout(loop, 1000.0 / 60.0);
+        setTimeout(loop, 1000.0 / (TargetFps + CompensateFps));
     }
 
-    setTimeout(loop, 0);
+    setTimeout(loop, 1000.0 / (TargetFps + CompensateFps));
 }
 
 function sbrk(increment) {
@@ -92,6 +98,15 @@ let getWindowHeight = function () {
     return WasmWindow.height
 }
 
+let setElementText = (id, text) => {
+    var id_str = getString(id);
+    console.log(id_str);
+    let element = document.getElementById(id_str);
+    if(element)
+        element.textContent = getString(text);
+}
+
+
 function createEnvironment() {
 
     return {
@@ -105,6 +120,7 @@ function createEnvironment() {
         "wgpuCommandEncoderBeginRenderPass": wgpuCommandEncoderBeginRenderPass,
         "wgpuRenderPassEncoderSetPipeline": wgpuRenderPassEncoderSetPipeline,
         "wgpuRenderPassEncoderDraw": wgpuRenderPassEncoderDraw,
+        "wgpuRenderPassEncoderDrawIndexed": wgpuRenderPassEncoderDrawIndexed,
         "wgpuRenderPassEncoderEnd": wgpuRenderPassEncoderEnd,
         "wgpuDeviceGetQueue": wgpuDeviceGetQueue,
         "wgpuCommandEncoderFinish": wgpuCommandEncoderFinish,
@@ -113,6 +129,7 @@ function createEnvironment() {
         "wgpuRenderPassEncoderRelease": wgpuRenderPassEncoderRelease,
         "wgpuCommandBufferRelease": wgpuCommandBufferRelease,
         "wgpuRenderPassEncoderSetVertexBuffer": wgpuRenderPassEncoderSetVertexBuffer,
+        "wgpuRenderPassEncoderSetIndexBuffer": wgpuRenderPassEncoderSetIndexBuffer,
         "wgpuQueueSubmit": wgpuQueueSubmit,
         "wgpuCreateBuffer": wgpuCreateBuffer,
         "wgpuDestroyBuffer": wgpuDestroyBuffer,
@@ -141,6 +158,7 @@ function createEnvironment() {
         "exp": Math.exp,
         "floor": Math.floor,
         "log": Math.log,
+        "log10": Math.log10,
         "pow": Math.pow,
         "cos": Math.cos,
         "trunc": Math.trunc,
@@ -152,6 +170,7 @@ function createEnvironment() {
         "atan": Math.atan2,
         "fabs": Math.abs,
         "round": Math.round,
+        "rand": Math.random,
 
         "fopen": fopen,
         "fread": fread,
@@ -162,7 +181,9 @@ function createEnvironment() {
         "env_response_text_promise": getResponseTextPromise,
         "env_promise_next": getPromiseNext,
         "env_response_blob_promise": getResponseBlobPromise,
-        "env_createImageBitmap": c_createImageBitmap
+        "env_createImageBitmap": c_createImageBitmap,
+
+        "env_setelementtext": setElementText
     };
 }
 
@@ -235,8 +256,8 @@ let fread = async (file, buffer, size, callback) => {
 var promiseMgr = {
     promises: {},
     numPromises: 1,
-    register: function(promise) {
-        if(promise === null || promise === undefined) 
+    register: function (promise) {
+        if (promise === null || promise === undefined)
             return;
         var wrapper = {}
         wrapper.promise = promise
@@ -244,47 +265,47 @@ var promiseMgr = {
         let id = this.numPromises
         this.numPromises++
         this.promises[id] = wrapper;
-        
+
         return id;
     },
 
-    get: function(id) {
-        if(id === 0) return;
+    get: function (id) {
+        if (id === 0) return;
         return this.promises[id]
     },
 
-    reference: function(id) {
-        if(id === 0) return;
+    reference: function (id) {
+        if (id === 0) return;
         this.promises[id].count++;
     },
 
-    dereference: function() {
-        if(id === 0) return;
+    dereference: function () {
+        if (id === 0) return;
         this.promises[id].count--;
 
-        if(this.promises[id].count <= 0) delete this.promises[id]
+        if (this.promises[id].count <= 0) delete this.promises[id]
     },
 
-    release: function(id) {
-        if(id === 0) return;
+    release: function (id) {
+        if (id === 0) return;
         delete this.promises[id]
     }
 
 };
 
-let getPromiseNext = function(promise_id, callback) {
+let getPromiseNext = function (promise_id, callback) {
 
     let promise = promiseMgr.get(promise_id).promise
-    promise.then( async (value) => { 
-        if(Response.prototype.isPrototypeOf(value))
+    promise.then(async (value) => {
+        if (Response.prototype.isPrototypeOf(value))
             WasmContext["vtable"].get(callback)(promiseMgr.register(value))
-        else if(Promise.prototype.isPrototypeOf(value))
+        else if (Promise.prototype.isPrototypeOf(value))
             WasmContext["vtable"].get(callback)(promiseMgr.register(value))
-        else if(Blob.prototype.isPrototypeOf(value))
+        else if (Blob.prototype.isPrototypeOf(value))
             WasmContext["vtable"].get(callback)(promiseMgr.register(value))
-        else if(ImageBitmap.prototype.isPrototypeOf(value))
+        else if (ImageBitmap.prototype.isPrototypeOf(value))
             WasmContext["vtable"].get(callback)(promiseMgr.register(value))
-        if(typeof value === 'string') {
+        if (typeof value === 'string') {
 
             let str = value
             let b = new Uint8Array(WasmContext["memory"], WasmContext.heap_base, str.length)
@@ -295,11 +316,11 @@ let getPromiseNext = function(promise_id, callback) {
             b.set(arr, 0)
             WasmContext["vtable"].get(callback)(WasmContext.heap_base)
         }
-        
+
     })
 }
 
-let getResponseText = function(promise_id, callback) {
+let getResponseText = function (promise_id, callback) {
 
     let text = promiseMgr.get(promise_id).promise
 
@@ -320,10 +341,10 @@ let getResponseBlobPromise = (promise_id) => {
 
 
 
-let getCreateImageBitmapPromise = function(promise_id) {}
+let getCreateImageBitmapPromise = function (promise_id) { }
 
 
-let c_createImageBitmap = function(obj) {
+let c_createImageBitmap = function (obj) {
 
     var imagePromise = promiseMgr.get(obj).promise;
 
@@ -352,61 +373,64 @@ let c_createImageBitmap = async (filename, lambda) => {
 
 }*/
 
-let print_num = function(num) {
+let print_num = function (num) {
     console.log(num)
 }
 
 async function init(wasmPath) {
-    initWebGpu().then(async function (device) {
 
-        if (device === undefined || device == null) {
+    let device = await initWebGpu().catch((err) => {});
+
+    if (device === undefined || device === null) {
+        if (document.getElementById('not_available') !== null)
             document.getElementById("not_available").style.display = 'flex';
+        if (document.querySelector('canvas') !== null)
             document.querySelector('canvas').style.display = 'none';
+        if (document.getElementById('fps') !== null)
             document.getElementById("fps").style.display = 'none';
-            WasmContext.deviceAvailable = false;
-            return
-            //abort();
-        }
+        WasmContext.deviceAvailable = false;
+    }
 
 
-        GlobalGPUContext["device"] = device;
+    GlobalGPUContext["device"] = device;
 
-        const importObject = {
-            env: createEnvironment(),
-        }
+    const importObject = {
+        env: createEnvironment(),
+    }
 
-        const { instance } = await WebAssembly.instantiateStreaming(fetch(wasmPath),
-            { "env": createEnvironment() }
-        ).catch(function (error) {
-            console.error(error);
-        });
+    const { instance } = await WebAssembly.instantiateStreaming(fetch(wasmPath),
+        { "env": createEnvironment() }
+    ).catch(function (error) {
+        console.error(error);
+    });
 
-        WasmContext["heap_base"] = instance.exports.__heap_base.value;
-        WasmContext["vtable"] = instance.exports.__indirect_function_table
-        WasmContext["memory"] = instance.exports.memory.buffer;
-        WasmContext["exports"] = instance.exports;
-        WasmContext["heapViewu8"] = new Uint8Array(WasmContext["memory"]);
-        WasmContext["heapViewu16"] = new Uint16Array(WasmContext["memory"]);
-        WasmContext["heapViewu32"] = new Uint32Array(WasmContext["memory"]);
-        WasmContext["heapViewf32"] = new Float32Array(WasmContext["memory"]);
-        WasmContext["heapView32"] = new Int32Array(WasmContext["memory"]);
+    WasmContext["heap_base"] = instance.exports.__heap_base.value;
+    WasmContext["vtable"] = instance.exports.__indirect_function_table
+    WasmContext["memory"] = instance.exports.memory.buffer;
+    WasmContext["exports"] = instance.exports;
+    WasmContext["heapViewu8"] = new Uint8Array(WasmContext["memory"]);
+    WasmContext["heapViewu16"] = new Uint16Array(WasmContext["memory"]);
+    WasmContext["heapViewu32"] = new Uint32Array(WasmContext["memory"]);
+    WasmContext["heapViewf32"] = new Float32Array(WasmContext["memory"]);
+    WasmContext["heapView32"] = new Int32Array(WasmContext["memory"]);
 
-        const presentationFormat = navigator.gpu.getPreferredCanvasFormat();
+    const presentationFormat = navigator.gpu.getPreferredCanvasFormat();
 
+    if (GlobalGPUContext.context !== undefined && GlobalGPUContext.context !== null) {
         GlobalGPUContext["context"].configure({
+            alphaMode: "premultiplied",
             device: GlobalGPUContext["device"],
             format: presentationFormat,
         });
 
-        if (instance.exports.__wasm_call_ctors) instance.exports.__wasm_call_ctors();
-
         WasmWindow.width = GlobalGPUContext.context.canvas.width;
         WasmWindow.height = GlobalGPUContext.context.canvas.height;
-        
-        try{
+    }
+
+    if (instance.exports.__wasm_call_ctors) instance.exports.__wasm_call_ctors();
+    try {
         instance.exports.__main_argc_argv();
-        } catch(err) {
-            console.log(err)
-        }
-    })
+    } catch (err) {
+        console.log(err)
+    }
 }
