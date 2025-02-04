@@ -1,9 +1,19 @@
-html, body, canvas {
+html, body {
     margin: 0;
     padding: 0;
     display: block;
     color: white;
     background-color: #181818;
+}
+
+canvas {
+    margin: 0;
+    padding: 0;
+    left: 0;
+    top: 0;
+    display: block;
+    position: fixed;
+    z-index: 10;
 }
 
 main {
@@ -22,12 +32,5 @@ a {
 
 #fps {
     padding: 10px;
-    background-color: black;
-}
-
-canvas {
-    position: fixed;
-    left: 0;
-    top: 0;
-    z-index: -1;
+    background-color: transparent;
 }
