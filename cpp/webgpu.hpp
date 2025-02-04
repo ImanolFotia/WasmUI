@@ -1,9 +1,10 @@
 #pragma once
 
 #include "defs.hpp"
+#include "js_string.hpp"
 #include "math/vector.hpp"
-#include "string.hpp"
 #include <stdint.h>
+#include <string.hpp>
 
 namespace wgpu {
 
@@ -305,6 +306,8 @@ RenderPass wgpuCommandEncoderBeginRenderPass(CommandEncoder,
                                              RenderPassDescriptor);
 void wgpuRenderPassEncoderSetPipeline(RenderPass, Pipeline);
 void wgpuRenderPassEncoderDraw(RenderPass, uint32_t);
+void wgpuRenderPassEncoderDrawIndexed(RenderPass, uint32_t, uint32_t, uint32_t,
+                                      uint32_t, uint32_t);
 void wgpuRenderPassEncoderEnd(RenderPass);
 Queue wgpuDeviceGetQueue(Device);
 CommandBuffer wgpuCommandEncoderFinish(CommandEncoder);
@@ -316,6 +319,8 @@ void wgpuCommandBufferRelease(CommandBuffer);
 Buffer wgpuCreateBuffer(Device, BufferDescriptor);
 void wgpuRenderPassEncoderSetVertexBuffer(RenderPass, uint32_t, Buffer,
                                           uint32_t, uint32_t);
+void wgpuRenderPassEncoderSetIndexBuffer(RenderPass, Buffer, uint32_t format,
+                                         uint32_t offset, uint32_t size);
 void wgpuDestroyBuffer(Buffer);
 
 BindGroupLayout wgpuDeviceCreateBindGroupLayout(Device,
@@ -373,6 +378,16 @@ static void RenderPassEncoderSetPipeline(RenderPass encoder,
 static void RenderPassEncoderDraw(RenderPass encoder, uint32_t count) {
   imports::wgpuRenderPassEncoderDraw(encoder, count);
 }
+
+static void RenderPassEncoderDrawIndexed(RenderPass encoder, uint32_t count,
+                                         uint32_t instanceCount = 1,
+                                         uint32_t firstIndex = 0,
+                                         uint32_t baseVertex = 0,
+                                         uint32_t firstInstance = 0) {
+  imports::wgpuRenderPassEncoderDrawIndexed(
+      encoder, count, instanceCount, firstIndex, baseVertex, firstInstance);
+}
+
 static void RenderPassEncoderEnd(RenderPass encoder) {
   imports::wgpuRenderPassEncoderEnd(encoder);
 }
@@ -410,6 +425,13 @@ static void RenderPassEncoderSetVertexBuffer(RenderPass encoder, uint32_t slot,
                                              uint32_t size) {
   imports::wgpuRenderPassEncoderSetVertexBuffer(encoder, slot, buffer, offset,
                                                 size);
+}
+
+static void RenderPassEncoderSetIndexBuffer(RenderPass pass, Buffer buffer,
+                                            uint32_t format, uint32_t offset,
+                                            uint32_t size) {
+  imports::wgpuRenderPassEncoderSetIndexBuffer(pass, buffer, format, offset,
+                                               size);
 }
 
 static void *BufferGetMappedRange(Buffer buffer, uint32_t offset,
