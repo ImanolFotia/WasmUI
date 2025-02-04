@@ -9,6 +9,8 @@ template <uint32_t comps, typename T> struct vec {};
 
 template <typename T> struct vec<2, T> {
 
+  vec() = default;
+
   vec(T v) : x{v}, y{v} {}
 
   vec(T x, T y) : x{x}, y{y}{}
@@ -29,14 +31,24 @@ template <typename T> struct vec<2, T> {
   float length() { return sqrt(dot(*this)); }
 
   vec operator+(vec other) { return {x + other.x, y + other.y}; }
+  vec operator+=(float other) {  *this = {x + other, y + other}; return *this; }
 
   vec operator-(vec other) { return {x - other.x, y - other.y}; }
+  vec operator-=(float other) {  *this = {x - other, y - other}; return *this; }
 
   vec operator*(vec other) { return {x * other.x, y * other.y}; }
+  vec operator*=(float other) {  *this = {x * other, y * other}; return *this; }
 
   vec operator/(vec other) { return {x / other.x, y / other.y}; }
 
+  bool operator==(vec other) { return x == other.x && y == other.y; }
+
+  vec operator-() { return {-x, -y}; }
+
   T dot(vec other) { return x * other.x + y * other.y; }
+
+  T ceil() { *this = {ceil(x), ceil(y)}; return *this; }
+  T floor() { *this = {floor(x), floor(y)}; return *this; }
 
   vec cross(vec o) {
     //return {y * o.z - o.y * z, o.x * z - x * o.z, x * o.y - o.x * y};
@@ -50,6 +62,8 @@ template <typename T> struct vec<2, T> {
 };
 
 template <typename T> struct vec<3, T> {
+
+  vec() = default;
 
   vec(T v) : x{v}, y{v}, z{v} {}
 
@@ -69,13 +83,35 @@ template <typename T> struct vec<3, T> {
 
   vec operator+(vec other) { return {x + other.x, y + other.y, z + other.z}; }
 
+  vec operator+(float other) { return {x + other, y + other, z + other}; }
+
+  vec operator+=(float other) {  *this = {x + other, y + other, z + other}; return *this; }
+
   vec operator-(vec other) { return {x - other.x, y - other.y, z - other.z}; }
 
+  vec operator-(float other) { return {x - other, y - other, z - other}; }
+  vec operator-=(float other) {  *this = {x - other, y - other, z - other}; return *this; }
+  vec operator-=(vec other) {  *this = {x - other.x, y - other.y, z - other.z}; return *this; }
+
   vec operator*(vec other) { return {x * other.x, y * other.y, z * other.z}; }
+  vec operator*=(float other) {  *this = {x * other, y * other, z * other}; return *this; }
+  vec operator*=(vec other) {  *this = {x * other.x, y * other.y, z * other.z}; return *this; }
+
+  vec operator*(float other) { return {x * other, y * other, z * other}; }
 
   vec operator/(vec other) { return {x / other.x, y / other.y, z / other.z}; }
 
+  vec operator/(float other) { return {x / other, y / other, z / other}; }
+
+  bool operator==(vec other) { return x == other.x && y == other.y && z == other.z; }
+
+  vec operator-() { return {-x, -y, -z}; }
+
   T dot(vec other) { return x * other.x + y * other.y + z * other.z; }
+
+  T ceil() { *this = {ceil(x), ceil(y), ceil(z)}; return *this; }
+
+  T floor() { *this = {floor(x), floor(y), floor(z)}; return *this; }
 
   vec cross(vec o) {
     return {y * o.z - o.y * z, o.x * z - x * o.z, x * o.y - o.x * y};
@@ -88,7 +124,12 @@ template <typename T> struct vec<3, T> {
   }
 };
 
+
+static vec<3, float> operator*(float other, vec<3, float> v) { return {v.x * other, v.y * other, v.z * other}; }
+
 template <typename T> struct vec<4, T> {
+
+  vec() = default;
 
   vec(T v) : x{v}, y{v}, z{v}, w{v} {}
 
@@ -113,18 +154,30 @@ template <typename T> struct vec<4, T> {
   vec operator-(vec other) {
     return {x - other.x, y - other.y, z - other.z, w - other.w};
   }
+  vec operator-=(float other) {  *this = {x - other, y - other, z - other, w - other}; return *this; }
+  vec operator-=(vec other) {  *this = {x - other.x, y - other.y, z - other.z, w - other.w}; return *this; }
 
   vec operator*(vec other) {
     return {x * other.x, y * other.y, z * other.z, w * other.w};
   }
+  vec operator*=(vec other) {  *this = {x * other.x, y * other.y, z * other.z, w * other.w}; return *this; }
+  vec operator*=(float other) {  *this = {x * other, y * other, z * other, w * other}; return *this; }
 
   vec operator/(vec other) {
     return {x / other.x, y / other.y, z / other.z, w / other.w};
   }
 
+  bool operator==(vec other) { return x == other.x && y == other.y && z == other.z && w == other.w; }
+
+  vec operator-() { return {-x, -y, -z, -w}; }
+
   float dot(vec other) {
     return x * other.x + y * other.y + z * other.z + w * other.w;
   }
+
+  T ceil() { *this = {ceil(x), ceil(y), ceil(z), ceil(w)}; return *this; }
+
+  T floor() { *this = {floor(x), floor(y), floor(z), floor(w)}; return *this; }
 
   vec cross(vec o) {
     return {y * o.z - o.y * z, o.x * z - x * o.z, x * o.y - o.x * y, 1.0f};

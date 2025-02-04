@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../string.hpp"
+#include <string.hpp>
 
 #include "vector.hpp"
 #include <stdint.h>
@@ -9,7 +9,7 @@ namespace Math {
 struct mat4 {
   mat4() = default;
   mat4(float x) {
-    memset(data, 0, 16 * sizeof(float));
+    std::memset(data, 0, 16 * sizeof(float));
     data[0] = x;
     data[5] = x;
     data[10] = x;
@@ -35,18 +35,23 @@ struct mat4 {
     data[i++] = d.w;
   }
 
+  mat4(const mat4& other) {
+    *this = other;
+  }
+
   mat4 identity() {
-    memset(data, 0, 16 * sizeof(float));
+    std::memset(data, 0, 16 * sizeof(float));
     data[0] = 1;
     data[5] = 1;
     data[10] = 1;
     data[15] = 1;
     return *this;
   }
-  mat4 operator*(mat4 &o) {
+
+  mat4 operator*(const mat4 &o) {
     mat4 out;
-    float *X = data;
-    float *x = o.data;
+    const float *X = data;
+    const float *x = o.data;
     vec4 a = vec4(x[0] * X[0] + x[1] * X[4] + x[2] * X[8] + x[3] * X[12],
                   x[0] * X[1] + x[1] * X[5] + x[2] * X[9] + x[3] * X[13],
                   x[0] * X[2] + x[1] * X[6] + x[2] * X[10] + x[3] * X[14],
@@ -95,5 +100,72 @@ static mat4 perspective(float fov, float aspect, float near, float far) {
 
   return out;
 }
+
+static mat4 translate(vec3 position) {
+  mat4 out;
+  out.identity();
+  out.data[12] = position.x;
+  out.data[13] = position.y;
+  out.data[14] = position.z;
+  return out;
+}
+
+
+static mat4 scale(vec3 size) {
+  mat4 out;
+  out.identity();
+  out.data[0] = size.x;
+  out.data[5] = size.y;
+  out.data[10] = size.z;
+  return out;
+}
+
+static mat4 rotate(float angle, vec3 r) {
+
+  mat4 out;
+  out.identity();
+  float cosTheta = cos(angle);
+  float sinTheta = sin(angle);
+  out.data[0] = cosTheta+ r.x*r.x * (1.0 - cosTheta);
+  out.data[1] = r.x*r.y * (1.0 - cosTheta) - r.z * sinTheta;
+  out.data[2] = r.x*r.z * (1.0 - cosTheta) + r.y * sinTheta;
+
+  out.data[4] = r.y*r.x * (1.0 - cosTheta) + r.z * sinTheta;
+  out.data[5] = cosTheta + r.y*r.y * (1.0-cosTheta);
+  out.data[6] = r.y*r.z * (1.0 - cosTheta) - r.x * sinTheta;
+
+  out.data[8] = r.z * r.x * (1.0 - cosTheta) - r.y * sinTheta;
+  out.data[9] = r.z * r.y * (1.0 - cosTheta) + r.x * sinTheta;
+  out.data[10] = cosTheta + r.z*r.z * (1.0 - cosTheta);
+
+  return out;
+
+}
+/*
+static 
+  mat4 operator*(mat4 &am, mat4& bm) {
+    mat4 out;
+    float *X = am.data;
+    float *x = bm.data;
+    vec4 a = vec4(x[0] * X[0] + x[1] * X[4] + x[2] * X[8] + x[3] * X[12],
+                  x[0] * X[1] + x[1] * X[5] + x[2] * X[9] + x[3] * X[13],
+                  x[0] * X[2] + x[1] * X[6] + x[2] * X[10] + x[3] * X[14],
+                  x[0] * X[3] + x[1] * X[7] + x[2] * X[11] + x[3] * X[15]);
+    vec4 b = vec4(x[4] * X[0] + x[5] * X[4] + x[6] * X[8] + x[7] * X[12],
+                  x[4] * X[1] + x[5] * X[5] + x[6] * X[9] + x[7] * X[13],
+                  x[4] * X[2] + x[5] * X[6] + x[6] * X[10] + x[7] * X[14],
+                  x[4] * X[3] + x[5] * X[7] + x[6] * X[11] + x[7] * X[15]);
+    vec4 c = vec4(x[8] * X[0] + x[9] * X[4] + x[10] * X[8] + x[11] * X[12],
+                  x[8] * X[1] + x[9] * X[5] + x[10] * X[9] + x[11] * X[13],
+                  x[8] * X[2] + x[9] * X[6] + x[10] * X[10] + x[11] * X[14],
+                  x[8] * X[3] + x[9] * X[7] + x[10] * X[11] + x[11] * X[15]);
+    vec4 d = vec4(x[12] * X[0] + x[13] * X[4] + x[14] * X[8] + x[15] * X[12],
+                  x[12] * X[1] + x[13] * X[5] + x[14] * X[9] + x[15] * X[13],
+                  x[12] * X[2] + x[13] * X[6] + x[14] * X[10] + x[15] * X[14],
+                  x[12] * X[3] + x[13] * X[7] + x[14] * X[11] + x[15] * X[15]);
+    out = mat4(a, b, c, d);
+    return out;
+  }*/
+
 
 }; // namespace Math
