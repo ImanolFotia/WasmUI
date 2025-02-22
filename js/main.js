@@ -16,9 +16,11 @@ function getStringFromPointer(offset, size) {
 }
 
 function wasm_print(heap_base) {
+    try{
     const str = getString(heap_base);
     console.log(str);
     return str.length
+    } catch (err) {}
 }
 let lastTime = 0.0;
 let updateFps = 1.0
@@ -100,12 +102,17 @@ let getWindowHeight = function () {
 
 let setElementText = (id, text) => {
     var id_str = getString(id);
-    console.log(id_str);
     let element = document.getElementById(id_str);
     if(element)
         element.textContent = getString(text);
 }
 
+let getCheckboxValue = (id) => {
+    var id_str = getString(id);
+    let element = document.getElementById(id_str);
+    if(element)
+        return element.checked;
+}
 
 function createEnvironment() {
 
@@ -183,7 +190,8 @@ function createEnvironment() {
         "env_response_blob_promise": getResponseBlobPromise,
         "env_createImageBitmap": c_createImageBitmap,
 
-        "env_setelementtext": setElementText
+        "env_setelementtext": setElementText,
+        "getCheckboxValue": getCheckboxValue
     };
 }
 
@@ -379,7 +387,7 @@ let print_num = function (num) {
 
 async function init(wasmPath) {
 
-    let device = await initWebGpu().catch((err) => {});
+    let device = await initWebGpu().catch((err) => console.error(err));
 
     if (device === undefined || device === null) {
         if (document.getElementById('not_available') !== null)
@@ -414,13 +422,14 @@ async function init(wasmPath) {
     WasmContext["heapViewf32"] = new Float32Array(WasmContext["memory"]);
     WasmContext["heapView32"] = new Int32Array(WasmContext["memory"]);
 
-    const presentationFormat = navigator.gpu.getPreferredCanvasFormat();
 
     if (GlobalGPUContext.context !== undefined && GlobalGPUContext.context !== null) {
+        
+    const presentationFormat = navigator.gpu.getPreferredCanvasFormat();
         GlobalGPUContext["context"].configure({
-            alphaMode: "premultiplied",
             device: GlobalGPUContext["device"],
-            format: presentationFormat,
+            format: presentationFormat,    
+            alphaMode: 'premultiplied',
         });
 
         WasmWindow.width = GlobalGPUContext.context.canvas.width;
@@ -429,7 +438,14 @@ async function init(wasmPath) {
 
     if (instance.exports.__wasm_call_ctors) instance.exports.__wasm_call_ctors();
     try {
-        instance.exports.__main_argc_argv();
+        if(instance.exports.__main_argc_argv)
+            instance.exports.__main_argc_argv();
+
+        else if(instance.exports.__main)
+            instance.exports.__main();
+        else {
+            console.error("No entry point was found or provided");
+        }
     } catch (err) {
         console.log(err)
     }

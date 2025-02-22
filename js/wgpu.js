@@ -403,6 +403,9 @@ let wgpuCreateRenderPipeline = function (device_id, pipelineInfo) {
                     topology: creation_info.primitive.topology,
                     cullMode: 'back',
                 },
+                multisample: {
+                    count: creation_info.multisample.count
+                },
                 depthStencil: depthStencil
             }
         ));
@@ -756,10 +759,12 @@ async function initWebGpu() {
     if(canvas === undefined || canvas === null)
         return Promise.reject();
 
+    const devicePixelRatio = window.devicePixelRatio;
+
     const width = window.innerWidth;
     const height = window.innerHeight;
-    canvas.width = width;
-    canvas.height = height;
+    canvas.width = width * devicePixelRatio;
+    canvas.height = height * devicePixelRatio;
 
     const ctx = canvas.getContext('webgpu');
 
@@ -767,17 +772,22 @@ async function initWebGpu() {
 
     try {
         const adapter = await navigator.gpu.requestAdapter().catch((err) => {
-            WasmContext.adapterAvailable = false;
+            WasmContext.adapterAvailable = true;
         })
         if (adapter === undefined || adapter === null) { WasmContext.adapterAvailable = false; return undefined }
         return await adapter.requestDevice();
     } catch (error) {
         console.log(error)
-        document.getElementById("not_available").style.display = 'flex';
-        document.querySelector('canvas').style.display = 'none';
-        document.getElementById("fps").style.display = 'none';
+        if(document.getElementById("not_available") !== null)
+            document.getElementById("not_available").style.display = 'flex';
+
+        if(document.getElementById("not_available") !== null)
+            document.querySelector('canvas').style.display = 'none';
+
+        if(document.getElementById("fps") !== null)
+            document.getElementById("fps").style.display = 'none';
         WasmContext.deviceAvailable = false;
-        abort();
+        return;
     }
 }
 
@@ -830,6 +840,9 @@ var getPipelineCreationInfo = function (offset) {
         primitive: {
             topology: PrimitiveTopologyName[mem[6]]
         },
+        multisample: {
+            count: mem[29] > 1 ? mem[29] : 1
+        },
         fragment: {
             module: mem[32],
             entry_point: getStringFromPointer(mem[33], mem[34]),
@@ -854,7 +867,7 @@ var getColorAttachment = function (mem) {
         var cv = getColor(ptr, 4, 4);
         attachments.push({
             view: GlobalGPUContext.get(ptr[0 + i]).object,
-            resolve_target: ptr[1 + i],
+            resolveTarget: ptr[1 + i] != 0 ? GlobalGPUContext.get( ptr[1 + i]).object : undefined,
             loadOp: LoadOpName[ptr[2 + i]],
             storeOp: StoreOpName[ptr[3 + i]],
             clearValue: [ieee32ToFloat(ptr[4 + i]),
