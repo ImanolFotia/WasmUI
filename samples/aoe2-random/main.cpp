@@ -1,120 +1,31 @@
 // #include "cube.hpp"
-#include <arena.hpp>
-#include <string.hpp>
-#include <webgpu.hpp>
-
-#include <math/matrix.hpp>
-#include <promise.hpp>
-#include <std/stdio.hpp>
-
-#include "primitives/cube.hpp"
-#include "primitives/cylinder.hpp"
-#include "primitives/quad.hpp"
+#include "renderer.h"
 
 extern "C" void request_animation_frame(void *);
-extern "C" FILE fopen(JsString);
-extern "C" void fread(FILE, char *, size_t);
-
-const char *vertexCode =
-    /* wgsl */
-    R"(
-struct Uniforms {
-  viewProj : mat4x4f,
-  time: f32,
-  civ_uv: vec2f
-};
-@binding(0) @group(0) var<uniform> uniforms : Uniforms;
-struct VertexOut {
-    @builtin(position) Position: vec4f,
-    @location(0) uv: vec2f,
-    @location(1) normal: vec3f,
-    @location(2) time: f32,
-    @location(3) fragPos: vec3f
-  }; 
-struct VertexIn {
-  @location(0) position: vec3f,
-  @location(1) uv: vec2f,
-  @location(2) normal: vec3f
-};
-@vertex fn main( vtx: VertexIn ) -> VertexOut {
-  var vsOut: VertexOut;
-  vsOut.Position = uniforms.viewProj * vec4f(vtx.position, 1.0);
-  vsOut.fragPos = vsOut.Position.xyz;
-  var uv: vec2f = vec2f(1.0-vtx.uv.x, 1.0-vtx.uv.y);
-  vsOut.uv = (uv * (1.0/9.0)) + uniforms.civ_uv;
-  vsOut.normal = vtx.normal;
-  vsOut.time = uniforms.time;
-  return vsOut;
-})";
-
-const char *fragmentCode =
-    R"(
-@group(0) @binding(1) var mySampler: sampler;
-@group(0) @binding(2) var myTexture: texture_2d<f32>;
- struct FragmentIn {
-    @location(0) uv: vec2f,
-    @location(1) normal: vec3f,
-    @location(2) time: f32,
-    @location(3) fragPos: vec3f
-  }; 
-  @fragment fn main(fsInput: FragmentIn) -> @location(0) vec4f {
-  var albedo: vec4f = textureSample(myTexture, mySampler, fsInput.uv);
-  if(albedo.a < 0.1){ 
-    discard;
-  }
-  return albedo;
-})";
-
-using namespace wgpu;
-
-Device device{};
-Pipeline pipeline{};
-Queue queue{};
-Buffer vtxBuffer{};
-Buffer idxBuffer{};
-Buffer uniformBuffer{};
-BindGroup bindGroup[3];
-Texture depthBuffer{};
-Texture cubeTexture{};
-
-struct Object {
-  Math::mat4 transform;
-  Buffer vtxBuffer;
-  Buffer idxBuffer;
-  Buffer uniformBuffer;
-  BindGroup bindGroup;
-  uint32_t uniform_offset;
-  uint32_t vtx_count;
-  uint32_t idx_count;
-};
-
-struct UniformBuffer {
-  Math::mat4 viewProj;
-  float time;
-  float padding[1]; // padding <-- VERY IMPORTANT
-  Math::vec2 civ_uv;
-};
-
-size_t cube_vertex_size = 0;
-size_t cube_index_size = 0;
-size_t indexCount = 0;
+extern "C" size_t getCheckboxValue(JsString);
 
 const int num_civs = 45;
 
+bool assetsLoaded = false;
+
 const char *civilization_names[num_civs] = {
-    "Armenians", "Azteks",     "Bengalis",   "Berbers",
-    "Bohemians", "Britons",    "Bulgarians", "Burgundiars",
-    "Burmese",   "Byzantines", "Celts", "Chinese", "Cumans",
-    "Dravidians", "Ethiopians", "Franks", "Georgians", "Goths",
-    "Gurjaras", "Hindustanis", "Huns", "Incas", "Italians", 
-    "Japanese", "Khmer", "Koreans", "Lithuanians", "Magyars",
-    "Malay", "Malians", "Mayans", "Mongols", "Persians", "Poles",
-    "Portuguese", "Romans", "Saracens", "Sicilians", "Slavs",
-    "Spanish", "Tatars", "Teutons", "Turks", "Vietnamese", "Vikings"
-};
+    "Armenians", "Azteks",      "Bengalis",    "Berbers",    "Bohemians",
+    "Britons",   "Bulgarians",  "Burgundiars", "Burmese",    "Byzantines",
+    "Celts",     "Chinese",     "Cumans",      "Dravidians", "Ethiopians",
+    "Franks",    "Georgians",   "Goths",       "Gurjaras",   "Hindustanis",
+    "Huns",      "Incas",       "Italians",    "Japanese",   "Khmer",
+    "Koreans",   "Lithuanians", "Magyars",     "Malay",      "Malians",
+    "Mayans",    "Mongols",     "Persians",    "Poles",      "Portuguese",
+    "Romans",    "Saracens",    "Sicilians",   "Slavs",      "Spanish",
+    "Tatars",    "Teutons",     "Turks",       "Vietnamese", "Vikings"};
+
+unsigned char ids[num_civs] = {5,  9,  10, 11, 15, 17, 23, 31, 32, 36, 41, 42,
+                               44, 1,  20, 25, 30, 39, 21, 22, 27, 38, 3,  14,
+                               29, 34, 8,  24, 28, 43, 6,  12, 26, 40, 7,  37,
+                               4,  33, 2,  13, 18, 19, 35, 0,  16};
 
 enum class Region : uint8_t {
-  AMERICAS = 0,
+  AMERICA = 0,
   AFRICA,
   EUROPE,
   ASIA,
@@ -122,13 +33,26 @@ enum class Region : uint8_t {
 
 enum class CivFlags : uint32_t {
   NONE = 0,
-  HAS_ELEPHANTS = 1 << 0,
-  HAS_BOMBSHIPS = 1 << 1,
+  HAS_ELEPHANTS = 1 << 1,
+  HAS_CANNON_GALLEON = 1 << 2,
 };
+
+CivFlags operator&(CivFlags a, CivFlags b){
+	return (CivFlags)((uint32_t)a & (uint32_t)b);
+}
+
+CivFlags operator|=(CivFlags &a, CivFlags b) {
+	return a = (CivFlags)((uint32_t)a | (uint32_t)b), a;
+}
+
+CivFlags operator^=(CivFlags &a, CivFlags b) {
+	return a = (CivFlags)((uint32_t)a ^ (uint32_t)b), a;	
+}
+
 
 struct Civilization {
   uint8_t id = 0;
-  const char* name;
+  const char *name;
   CivFlags flags = CivFlags::NONE;
   Region region;
   Math::vec2 civ_uv;
@@ -138,40 +62,73 @@ Civilization civilizations[num_civs] = {0};
 
 void InitCivilizations() {
 
-  for(uint8_t i = 0; i < num_civs; i++) {
-    civilizations[i] =  {.id = i, .name = civilization_names[i],  .flags = CivFlags::NONE, .region = Region::EUROPE};
+  for (uint8_t i = 0; i < num_civs; i++) {
+    civilizations[i] = {.id = i,
+                        .name = civilization_names[ids[i]],
+                        .flags = CivFlags::HAS_CANNON_GALLEON,
+                        .region = Region::EUROPE};
   }
-  civilizations[0] =  {.id = 0,.name = civilization_names[0],  .flags = CivFlags::NONE, .region = Region::EUROPE};
-  civilizations[1] =  {.id = 2,.name = civilization_names[1],  .flags = CivFlags::NONE, .region = Region::AMERICAS};
-  civilizations[2] =  {.id = 3,.name = civilization_names[2],  .flags = CivFlags::HAS_ELEPHANTS, .region = Region::ASIA};
-  civilizations[3] =  {.id = 4,.name = civilization_names[3],  .flags = CivFlags::HAS_ELEPHANTS, .region = Region::ASIA};
-  civilizations[4] =  {.id = 5,.name = civilization_names[4],  .flags = CivFlags::NONE, .region = Region::EUROPE};
-  civilizations[5] =  {.id = 6,.name = civilization_names[5],  .flags = CivFlags::HAS_BOMBSHIPS, .region = Region::EUROPE};
-  civilizations[6] =  {.id =7,.name = civilization_names[6],  .flags = CivFlags::NONE, .region = Region::EUROPE};
-  civilizations[7] =  {.id = 0,.name = civilization_names[7],  .flags = CivFlags::NONE, .region = Region::EUROPE};
-  civilizations[8] =  {.id = 0,.name = civilization_names[8],  .flags = CivFlags::NONE, .region = Region::AFRICA};
-  civilizations[9] =  {.id = 4,.name = civilization_names[9],  .flags = CivFlags::NONE, .region = Region::EUROPE};
-  civilizations[10] = {.id = 0,.name = civilization_names[10], .flags = CivFlags::NONE, .region = Region::EUROPE};
-  civilizations[11] = {.id = 5,.name = civilization_names[11], .flags = CivFlags::NONE, .region = Region::ASIA};
-  civilizations[12] = {.id = 7,.name = civilization_names[12], .flags = CivFlags::NONE, .region = Region::ASIA};
-  civilizations[13] = {.id = 0,.name = civilization_names[13], .flags = CivFlags::NONE, .region = Region::ASIA};
-}
 
-struct Card {
+  civilizations[13].region = Region::AMERICA;
+  civilizations[16].region = Region::AMERICA;
+  civilizations[18].region = Region::AMERICA;
+  
+  civilizations[22].region = Region::AFRICA;
+  civilizations[23].region = Region::AFRICA;
+  civilizations[24].region = Region::AFRICA;
+  
+  civilizations[3].region = Region::ASIA;
+  civilizations[6].region = Region::ASIA;
+  civilizations[7].region = Region::ASIA;
+  civilizations[8].region = Region::ASIA;
+  civilizations[9].region = Region::ASIA;
+  civilizations[11].region = Region::ASIA;
+  civilizations[15].region = Region::ASIA;
+  civilizations[27].region = Region::ASIA;
+  civilizations[28].region = Region::ASIA;
+  civilizations[29].region = Region::ASIA;
+  civilizations[31].region = Region::ASIA;
+  civilizations[33].region = Region::ASIA;
+  civilizations[38].region = Region::ASIA;
+  civilizations[39].region = Region::ASIA;
+  civilizations[40].region = Region::ASIA;
+  civilizations[41].region = Region::ASIA;
+  civilizations[43].region = Region::ASIA;
+  civilizations[44].region = Region::ASIA;
+  
+  civilizations[8].flags |= CivFlags::HAS_ELEPHANTS;
+  civilizations[41].flags |= CivFlags::HAS_ELEPHANTS;
+  civilizations[26].flags |= CivFlags::HAS_ELEPHANTS;
+  civilizations[27].flags |= CivFlags::HAS_ELEPHANTS;
+  civilizations[28].flags |= CivFlags::HAS_ELEPHANTS;
+  civilizations[29].flags |= CivFlags::HAS_ELEPHANTS;
+  civilizations[38].flags |= CivFlags::HAS_ELEPHANTS;
+  civilizations[39].flags |= CivFlags::HAS_ELEPHANTS;
+  civilizations[40].flags |= CivFlags::HAS_ELEPHANTS;
+
+
+  civilizations[16].flags ^= CivFlags::HAS_CANNON_GALLEON;
+  civilizations[18].flags ^= CivFlags::HAS_CANNON_GALLEON;
+  civilizations[13].flags ^= CivFlags::HAS_CANNON_GALLEON;
+  civilizations[31].flags ^= CivFlags::HAS_CANNON_GALLEON;
+  civilizations[14].flags ^= CivFlags::HAS_CANNON_GALLEON;
+}
+  struct Card {
+  float speed = 0.0;
   float angle;
   Object renderObject;
-  Civilization *civilization = nullptr;
+  const Civilization *civilization = nullptr;
+  bool done = false;
+  int spins = 100;
 };
 
 uint8_t num_cards = 3;
 Card cards[5] = {
-  {.angle = 0.0, .civilization = &civilizations[0]},
-  {.angle = 0.0, .civilization = &civilizations[1]},
-  {.angle = 0.0, .civilization = &civilizations[2]},
-  {.angle = 0.0, .civilization = &civilizations[0]},
-  {.angle = 0.0, .civilization = &civilizations[0]}
-};
-
+    {.angle = 1.0f + 0.5, .civilization = &civilizations[0], .spins = 50},
+    {.angle = 1.0f + 0.1, .civilization = &civilizations[1], .spins = 75},
+    {.angle = 1.0f + 0.9, .civilization = &civilizations[2], .spins = 100},
+    {.angle = 1.0f + 0.8, .civilization = &civilizations[3], .spins = 250},
+    {.angle = 1.0f + 0.4, .civilization = &civilizations[4], .spins = 300}};
 
 const int grid_size = 9;
 const float item_width = 1.0f / (float)grid_size;
@@ -182,231 +139,184 @@ Math::vec2 getCivCoord(unsigned id) {
           ((float)(id / grid_size)) * item_height};
 }
 
-int randomCiv() { return Math::floor(Math::rand() * num_civs); }
 
-void updateCard(int index, float dt) {
-  float &angle = cards[index].angle;
-  angle += dt * 6.0;
+bool should_run = false;
 
-  if (angle >= 2.0) {
+struct Filters_t {
+	bool no_elephants = false;
+	bool no_cannons = false;
+	bool asians = true;
+	bool africans = true;
+	bool americans = true;
+	bool europeans = true;
+} Filters;
 
-    int civ = randomCiv();
-    while (civ != cards[index].civilization->id)
-      if (cards[index].civilization->id != civ) {
-        cards[index].civilization = &civilizations[civ];
-        angle = 1;
-        civ = randomCiv();
-      }
+
+bool Filter(int civ) {
+
+  using CivFlags::HAS_ELEPHANTS;
+  using CivFlags::HAS_CANNON_GALLEON;
+  if(Filters.no_elephants && 0 != (uint32_t)(civilizations[civ].flags & HAS_ELEPHANTS)) return false;
+  if(Filters.no_cannons && 0 != (uint32_t)(civilizations[civ].flags & HAS_CANNON_GALLEON)) return false;
+
+
+  return true;
+}
+
+extern "C" void onClick_reset() {
+  cards[0].done = false;
+  cards[1].done = false;
+  cards[2].done = false;
+  cards[0].spins = 50;
+  cards[1].spins = 75;
+  cards[2].spins = 100;
+
+  cards[0].speed = 0;
+  cards[1].speed = 0;
+  cards[2].speed = 0;
+  should_run = false;
+}
+
+int available_civs[45] = {};
+int available_civs_count = 0;
+
+void InitCivArray() {
+  available_civs_count = 0;
+
+  for(int i = 0; i < 45; i++) {
+	  bool passes_filter = Filter(i);
+    if(civilizations[i].region == Region::ASIA && Filters.asians && passes_filter) {
+      available_civs[available_civs_count++] = i;
+      continue;
+    }
+    if(civilizations[i].region == Region::AFRICA && Filters.africans && passes_filter) {
+      available_civs[available_civs_count++] = i;
+      continue;
+    }
+    if(civilizations[i].region == Region::AMERICA && Filters.americans && passes_filter) {
+      available_civs[available_civs_count++] = i;
+      continue;
+    }
+    if(civilizations[i].region == Region::EUROPE && Filters.europeans && passes_filter) {
+      available_civs[available_civs_count++] = i;
+      continue;
+    }
+  }
+}
+
+int randomCiv() { 
+int id = (int)Math::floor(Math::rand() * available_civs_count);
+	std::printf("%:%", id, available_civs[id]);
+	return available_civs[id]; }
+extern "C" void onClick_spin() { 
+  onClick_reset();
+  Filters.no_elephants = (bool)getCheckboxValue("elephants");
+  Filters.no_cannons = (bool)getCheckboxValue("cannons");
+  Filters.asians = (bool)getCheckboxValue("input-asia");
+  Filters.americans = (bool)getCheckboxValue("input-america");
+  Filters.africans = (bool)getCheckboxValue("input-africa");
+  Filters.europeans = (bool)getCheckboxValue("input-europe");
+  
+  if(!Filters.asians && !Filters.americans && !Filters.africans && !Filters.europeans) return;
+
+  InitCivArray();
+
+  std::printf("Available civs: %", available_civs_count);
+  std::printf("no elephants: %", (size_t)Filters.no_elephants);
+  if(available_civs_count >= 3)
+  	should_run = true; 
+  else {
+
+    for(int i = 0; i < 45; i++) available_civs[i] = i;
+    available_civs_count = 45;
   }
 }
 
 
-void build_pipeline() {
+void updateCard(int index, float dt) {
+  dt = Math::clamp(dt, 0.016f, 0.032f);
+  float &angle = cards[index].angle;
+  float &speed = cards[index].speed;
+  int &spins = cards[index].spins;
 
-  ColorTargetState target;
-  target.format = GetPreferredCanvasFormat();
+  if (cards[index].done)
+    return;
 
-  VertexBufferLayout bufferLayout;
-  bufferLayout.arrayStride = sizeof(Math::Vertex);
-  bufferLayout.attributeCount = 3;
-  VertexAttribute attributes[3] = {{.format = Float32x3,
-                                    .offset = offsetof(Math::Vertex, position),
-                                    .shaderLocation = 0},
-                                   {.format = Float32x2,
-                                    .offset = offsetof(Math::Vertex, texCoord),
-                                    .shaderLocation = 1},
-                                   {.format = Float32x3,
-                                    .offset = offsetof(Math::Vertex, normal),
-                                    .shaderLocation = 2}};
+  angle = angle + dt * speed;
+  if (!should_run) {
+    if (speed <= 0.01) {
+      speed = (Math::rand() * 2.0) * Math::two_pi;
+      // angle = 1.0f + Math::rand();
+    }
 
-  bufferLayout.attributes = attributes;
+    speed = Math::mix(speed, 0.0f, dt);
+  }
+  if (should_run) {
+    if (spins > 3) {
+      speed = 5.0;
 
-  BufferBindingLayout buf = {};
-  buf.type = BufferBindingType::UNIFORM;
+    } else {
+      speed = Math::mix(speed, 0.0f, dt * 1.25f);
+    }
+  }
+  if (spins < 1 && angle >= 0.5) {
+    cards[index].done = true;
+    std::printf("% done with: %", index, cards[index].civilization->id);
+   
+  }
 
-  SamplerBindingLayout samp;
-  samp.type = SamplerBindingType::FILTERING;
+  if (angle >= 1.0) {
+    if(should_run)
+    spins--;
 
-  TextureBindingLayout tex = {.sampleType = TextureSampleType::FLOAT,
-                              .viewDimension = TextureViewDimension::d2D,
-                              .multisampled = false};
+    int civ = 0;
+    angle = 0.0;
+    for(;;) {
 
-  BindGroupLayoutEntry bglEntries[3] = {{
-                                            .binding = 0,
-                                            .visibility = ShaderStage::VERTEX,
-                                            .buffer = &buf,
-                                        },
-                                        {
-                                            .binding = 1,
-                                            .visibility = ShaderStage::FRAGMENT,
-                                            .sampler = &samp,
-                                        },
-                                        {
-                                            .binding = 2,
-                                            .visibility = ShaderStage::FRAGMENT,
-                                            .texture = &tex,
-                                        }};
+      civ = randomCiv();
 
-  BindGroupLayoutDescriptor bglDesc = {};
-  bglDesc.entryCount = 3;
-  bglDesc.entries = bglEntries;
-  BindGroupLayout bindGroupLayout = CreateBindGroupLayout(device, bglDesc);
+      bool valid = true;
 
-  PipelineLayoutDescriptor layout_descriptor;
+      if(should_run) valid = Filter(civ);
 
-  layout_descriptor.bindGroupLayoutCount = 1;
-  layout_descriptor.bindGroupLayouts = &bindGroupLayout;
+      if(!valid) continue;
+      
+      if(index == 0 && cards[index].civilization->id != civ) break;
 
-  SamplerDescriptor samplerDesc = {
-      .address_mode_u = REPEAT,
-      .address_mode_v = REPEAT,
-      .mag_filter = FilterMode::LINEAR,
-      .min_filter = FilterMode::LINEAR,
-  };
+      if(index == 1) {
+        if(cards[0].civilization->id == civ) continue;
+	break;
+      }
 
-  Sampler sampler = CreateSampler(device, samplerDesc);
+      if(index == 2) {
+        if(cards[1].civilization->id != civ && cards[0].civilization->id != civ){
+		if(available_civs_count < 4) break;
+		std::printf("break: % % %", cards[0].civilization->id, cards[1].civilization->id, civ);
+		if(cards[index].civilization->id != civ)
+			break; 
+	}
+      }
 
-  BindGroupEntry bgEntries0[3] = {
-      {.binding = 0,
-       .resource = {.buffer = uniformBuffer,
-                    .offset = 0,
-                    .size = sizeof(UniformBuffer)}},
-      {.binding = 1, .resource = {.sampler = sampler}},
-      {.binding = 2,
-       .resource = {.textureView = CreateTextureView(cubeTexture)}}};
+      //if(civ != cards[index].civilization->id && valid && available_civs_count > 3) break;
 
-  BindGroupDescriptor bindGroupDescriptor;
-  bindGroupDescriptor.layout = bindGroupLayout;
-  bindGroupDescriptor.entryCount = 3;
-  bindGroupDescriptor.entries = bgEntries0;
-  bindGroup[0] = CreateBindGroup(device, bindGroupDescriptor);
-
-  BindGroupEntry bgEntries1[3] = {
-      {.binding = 0,
-       .resource = {.buffer = uniformBuffer,
-                    .offset = 256,
-                    .size = sizeof(UniformBuffer)}},
-      {.binding = 1, .resource = {.sampler = sampler}},
-      {.binding = 2,
-       .resource = {.textureView = CreateTextureView(cubeTexture)}}};
-
-  bindGroupDescriptor.entries = bgEntries1;
-  bindGroup[1] = CreateBindGroup(device, bindGroupDescriptor);
-
-  BindGroupEntry bgEntries2[3] = {
-      {.binding = 0,
-       .resource = {.buffer = uniformBuffer,
-                    .offset = 512,
-                    .size = sizeof(UniformBuffer)}},
-      {.binding = 1, .resource = {.sampler = sampler}},
-      {.binding = 2,
-       .resource = {.textureView = CreateTextureView(cubeTexture)}}};
-
-  bindGroupDescriptor.entries = bgEntries2;
-  bindGroup[2] = CreateBindGroup(device, bindGroupDescriptor);
-
-  PipelineLayout pipeline_layout =
-      CreatePipelineLayout(device, layout_descriptor);
-
-  RenderPipelineDescriptor info = {
-      .layout = pipeline_layout,
-      .vertex = {.module = CreateShaderModule(device, vertexCode),
-                 .entryPoint = "main",
-                 .buffersCount = 1,
-                 .buffers = &bufferLayout},
-      .primitive = {.topology = GPUPrimitiveTopology::TRIANGLE_LIST},
-      .depthStencil =
-          {
-              .format = TextureFormat::Depth24Plus,
-              .depthWriteEnabled = true,
-              .depthCompare = CompareFunction::Less,
-          },
-      .fragment = {.module = CreateShaderModule(device, fragmentCode),
-                   .entryPoint = "main",
-                   .targetCount = 1,
-                   .targets = &target},
-  };
-  pipeline = CreateRenderPipeline(device, info);
-
-  depthBuffer = CreateTexture(
-      device, {
-                  .size = {(int)getWindowWidth(), (int)getWindowHeight(), 0},
-                  .dimension = TextureDimension::d2D,
-                  .format = TextureFormat::Depth24Plus,
-                  .usage = TextureUsage::RENDER_ATTACHMENT,
-              });
-
-  ReleaseBindGroupLayout(bindGroupLayout);
-}
-
-float time = 0.0f;
-
-struct RenderState {
-  CommandEncoder encoder;
-  TextureView textureView;
-  TextureView depthView;
-};
-
-RenderState state;
-
-RenderPass RenderBegin() {
- state.encoder = CreateCommandEncoder(device);
-
-  state.textureView = SwapChainGetCurrentTextureView();
-  state.depthView = CreateTextureView(depthBuffer);
-
-  RenderPassColorAttachment colorAttachment;
-  colorAttachment.view = state.textureView;
-  colorAttachment.clearValue = {0.0f, 0.0f, 0.0f, 0.0};
-  colorAttachment.operations = {LoadOp::CLEAR, StoreOp::STORE};
-
-  RenderPassDepthStencilAttachment depthAttachment;
-  depthAttachment.view = state.depthView;
-  depthAttachment.clearValue = {1.0f, 1.0f};
-  depthAttachment.depthOps = {LoadOp::CLEAR, StoreOp::STORE};
-
-  RenderPass pass = CommandEncoderBeginRenderPass(
-      state.encoder,
-      (RenderPassDescriptor){.colorAttachmentsCount = 1,
-                             .colorAttachments = &colorAttachment,
-                             .depthStencilAttachmentsCount = 1,
-                             .depthStencilAttachments = &depthAttachment});
-  return pass;
-}
-
-void RenderEnd(RenderPass pass) {
+    }
 
 
-  RenderPassEncoderEnd(pass);
-  RenderPassEncoderRelease(pass);
-  CommandBuffer finish = CommandEncoderFinish(state.encoder, nullptr);
-  CommandEncoderRelease(state.encoder);
-  QueueSubmit(queue, 1, finish);
+    cards[index].civilization = &civilizations[civ];
 
-  CommandBufferRelease(finish);
-  TextureViewRelease(state.textureView);
-  TextureViewRelease(state.depthView);
-}
+    char div_name[10];
+    std::sprintf(div_name, "civ-%", index + 1);
 
-void Draw(RenderPass pass, const Card &card) {
-
-
-  UniformBuffer uBuffer = {
-      .viewProj = card.renderObject.transform, .time = time, .civ_uv = getCivCoord(card.civilization->id)};
-  QueueWriteBuffer(queue, card.renderObject.uniformBuffer, card.renderObject.uniform_offset, (char *)&uBuffer, sizeof(UniformBuffer));
-
-  RenderPassEncoderSetPipeline(pass, pipeline);
-  RenderPassEncoderSetVertexBuffer(pass, 0, card.renderObject.vtxBuffer, 0, card.renderObject.vtx_count * sizeof(Math::Vertex));
-  RenderPassEncoderSetIndexBuffer(pass, card.renderObject.idxBuffer, 0, 0, card.renderObject.idx_count * sizeof(uint32_t));
-
-  RenderPassEncoderSetBindGroup(pass, 0, card.renderObject.bindGroup, 0, nullptr);
-  RenderPassEncoderDrawIndexed(pass, card.renderObject.idx_count);
-  
+    std::SetElementText(div_name, "%", cards[index].civilization->name);
+  }
 }
 
 extern "C" void render_loop(float dt) {
+
+  if (!assetsLoaded)
+    return;
   time += dt;
- 
+
   using Math::mat4;
   using Math::vec2;
   using Math::vec3;
@@ -422,79 +332,70 @@ extern "C" void render_loop(float dt) {
 
   auto pass = RenderBegin();
   float x = -1.5;
-  for(int i = 0; i < num_cards; i++) {
+  for (int i = 0; i < num_cards; i++) {
     Card *card = &cards[i];
     updateCard(i, dt);
     mat4 r = Math::rotate(Math::pi * card->angle, vec3(1.0, 0.0, 0.0));
-    mat4 t = Math::translate(vec3(x, -1.0, 0.0));
-    mat4 s = Math::scale(vec3(0.75f));
+    mat4 t = Math::translate(vec3(x, 0.2, 0.0));
+    mat4 s = Math::scale(vec3(0.85f));
     mat4 transform = proj * view * t * r * s;
     card->renderObject.transform = transform;
     card->renderObject.bindGroup = bindGroup[i];
     x += 1.5;
-    Draw(pass, cards[i]);
+
+    Draw(pass, {.transform = cards[i].renderObject.transform,
+                .uv = getCivCoord(cards[i].civilization->id),
+                .renderObject = cards[i].renderObject});
   }
   RenderEnd(pass);
 };
 
+void BufferCopy(Buffer buffer, void *buffer_data, size_t offset, size_t size) {
+  void *data = BufferGetMappedRange(buffer, offset, size);
+  std::memcpy(data, buffer_data, size);
+  BufferUnmap(buffer);
+}
+
 int main(int argc, char **argv) {
 
-  if (device = GetDevice(); device == 0) {
+  for(int i = 0; i < 45; i++) available_civs[i] = i;
+  available_civs_count = 45;
+
+  if (state.device = GetDevice(); state.device == 0) {
     puts("Error opening device.");
     return 1;
   }
 
-  queue = DeviceGetQueue(device);
+  queue = DeviceGetQueue(state.device);
 
-  ShaderModule fragmentShader = CreateShaderModule(device, fragmentCode);
-  ShaderModule vertexShader = CreateShaderModule(device, vertexCode);
+  ShaderModule fragmentShader = CreateShaderModule(state.device, fragmentCode);
+  ShaderModule vertexShader = CreateShaderModule(state.device, vertexCode);
 
   engine::Quad cube;
-  indexCount = cube.data().num_indices;
-  cube_vertex_size = cube.data().num_vertices * sizeof(Math::Vertex);
-  cube_index_size = indexCount * sizeof(uint32_t);
+  size_t indexCount = cube.data().num_indices;
+  size_t cube_vertex_size = cube.data().num_vertices * sizeof(Math::Vertex);
+  size_t cube_index_size = indexCount * sizeof(uint32_t);
 
-  vtxBuffer = CreateBuffer(device, {.size = cube_vertex_size,
-                                    .usage = (BufferUsage)(BufferUsage::VERTEX),
-                                    .mappedAtCreation = true});
+  vtxBuffer =
+      CreateBuffer(state.device, {.size = cube_vertex_size,
+                                  .usage = (BufferUsage)(BufferUsage::VERTEX),
+                                  .mappedAtCreation = true});
+  BufferCopy(vtxBuffer, (void *)cube.data().Vertices, 0, cube_vertex_size);
 
-  idxBuffer = CreateBuffer(device, {.size = cube_index_size,
-                                    .usage = (BufferUsage)(BufferUsage::INDEX),
-                                    .mappedAtCreation = true});
-
-  {
-    void *data = BufferGetMappedRange(vtxBuffer, 0, cube_vertex_size);
-    std::memcpy(data, (void *)cube.data().Vertices, cube_vertex_size);
-    BufferUnmap(vtxBuffer);
-  }
-  {
-    void *data = BufferGetMappedRange(idxBuffer, 0, cube_index_size);
-    std::memcpy(data, (void *)cube.data().Indices, cube_index_size);
-    BufferUnmap(idxBuffer);
-  }
+  idxBuffer =
+      CreateBuffer(state.device, {.size = cube_index_size,
+                                  .usage = (BufferUsage)(BufferUsage::INDEX),
+                                  .mappedAtCreation = true});
+  BufferCopy(idxBuffer, (void *)cube.data().Indices, 0, cube_index_size);
 
   uniformBuffer = CreateBuffer(
-      device,
+      state.device,
       {.size = 256 + 256 + 80 * 3,
        .usage = (BufferUsage)(BufferUsage::UNIFORM | BufferUsage::COPY_DST),
        .mappedAtCreation = false});
 
-       //offsets 0, 256, 512
-
-/*
-
-  Math::mat4 transform;
-  Buffer vtxBuffer;
-  Buffer idxBuffer;
-  Buffer uniformBuffer;
-  BindGroup bindGroup;
-  uint32_t uniform_offset;
-  uint32_t vtx_count;
-  uint32_t idx_count;
-*/
-
-InitCivilizations();
-  for(int i = 0; i < num_cards; i++) {
+  InitCivilizations();
+  for (int i = 0; i < num_cards; i++) {
     cards[i].renderObject.vtxBuffer = vtxBuffer;
     cards[i].renderObject.idxBuffer = idxBuffer;
     cards[i].renderObject.uniformBuffer = uniformBuffer;
@@ -505,23 +406,28 @@ InitCivilizations();
   }
 
   cubeTexture =
-      CreateTexture(device, {
-                                .size = {4096, 4096, 0},
-                                .dimension = TextureDimension::d2D,
-                                .format = TextureFormat::Rgba8Unorm,
-                                .usage = TextureUsage::RENDER_ATTACHMENT |
-                                         TextureUsage::COPY_DST |
-                                         TextureUsage::TEXTURE_BINDING,
-                            });
+      CreateTexture(state.device, {
+                                      .size = {4096, 4096, 0},
+                                      .dimension = TextureDimension::d2D,
+                                      .format = TextureFormat::Rgba8Unorm,
+                                      .usage = TextureUsage::RENDER_ATTACHMENT |
+                                               TextureUsage::COPY_DST |
+                                               TextureUsage::TEXTURE_BINDING,
+                                  });
 
   fetch("../../media/aoe2/civs.png").then([](Response response) {
     response.blob().then([](Blob blob) {
       createImageBitmap(blob.handle).then([](Image image) {
         QueueCopyExternalImageToTexture(queue, (void *)image.handle,
                                         cubeTexture, {4096, 4096, 0});
+        assetsLoaded = true;
       });
     });
   });
+
+  for(int i = 0; i < 45; i++)
+    std::printf("%: %", civilizations[i].name, (uint32_t)civilizations[i].flags & (uint32_t)CivFlags::HAS_ELEPHANTS);
+
 
   build_pipeline();
 

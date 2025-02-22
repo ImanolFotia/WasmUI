@@ -1,0 +1,222 @@
+* {
+    font-family: 'Lucida Blackletter', 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+}
+
+.logo-container {
+    display: grid;
+    padding: 15px;
+}
+
+.filter-container {
+    height: 400px;
+    backdrop-filter: blur(14.1px);
+    filter: drop-shadow(0px 0px 20px black);
+    border-color: #c2891f;
+    text-decoration-style: dotted;
+    text-shadow: 2px 2px 4px darkgray;
+    border-block-style: inset;
+    border-left-style: none;
+    border-right-style: none;
+    color: #181818
+}
+
+#logo-background {
+    height: 230px;
+    justify-self: center;
+    filter: saturate(100%) grayscale(100%) invert(0%) contrast(500%) blur(15px);
+    background-image: url("../../media/aoe2/logo.png");
+    background-size: contain;
+}
+
+#logo {
+    height: 230px;
+    justify-self: center;
+    position: absolute;
+}
+
+.civ-container {
+    display: grid;
+    display: grid;
+    position: absolute;
+    width: 100vw;
+    bottom: 0;
+    height: 40%;
+    font-size: 23px;
+    /*column-gap: 255px;*/
+    /* grid-template-columns: masonry;*/
+    column-gap: 13%;
+    place-content: center;
+    column-count: 1;
+    grid-auto-flow: column;
+}
+
+.civ-name {
+    display: flex;
+    width: 200px;
+    justify-content: center;
+    background: url("../../media/aoe2/scroll.png");
+    background-position-x: 0%;
+    background-position-y: 0%;
+    background-repeat: repeat;
+    background-size: auto;
+    background-size: contain;
+    background-repeat: no-repeat;
+    height: 100px;
+    background-position: center;
+    text-align: center;
+    align-items: center;
+    padding: 0px;
+}
+
+.filter-panel {
+    background: url("../../media/aoe2/panel.png");
+    background-color: rgba(0, 0, 0, 0);
+    height: 275px;
+    background-repeat: no-repeat;
+    background-size: contain;
+    align-self: center;
+    display: grid;
+    justify-self: center;
+    width: 100%;
+    background-position-x: center;
+    justify-items: center;
+    column-gap: -1%;
+    place-content:
+    space-evenly;
+    column-count: 1;
+    grid-auto-flow: column;
+    z-index: 15;
+    position: absolute;
+    color: #181818;
+}
+
+/* The container */
+.container {
+    display: block;
+    position: relative;
+    padding-left: 35px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    font-size: 22px;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Hide the browser's default checkbox */
+.container input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+/* Create a custom checkbox */
+.checkmark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 25px;
+    width: 25px;
+    background-color: #d9b38f;
+    border-style: ridge;
+    border-image-source: linear-gradient(45deg, rgb(255, 254, 251) 0%, rgb(204, 138, 10) 18%, rgb(26, 21, 2) 37%, rgb(121, 81, 9) 74%, rgb(255, 255, 255) 99%);
+    border-image-slice: 1;
+    box-shadow: 0px 0px 3px black;
+    border-inline-style: solid;
+    outline-style: double;
+    outline-color: #0000009f;
+    outline-offset: -4px;
+    color: black;
+    outline-width: 4px;
+}
+
+
+input[type=checkbox] {
+    margin: 10px;
+    transform: scale(2);
+    color: #181818;
+    color: #181818;
+    background-color: #d9b38f;
+
+}
+
+
+/* On mouse-over, add a grey background color */
+.container:hover input~.checkmark {
+    background-color: #d9b38f;
+}
+
+/* When the checkbox is checked, add a blue background */
+.container input:checked~.checkmark {
+    background-color: #d9b38f;
+}
+
+/* Create the checkmark/indicator (hidden when not checked) */
+.checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+}
+
+/* Show the checkmark when checked */
+.container input:checked~.checkmark:after {
+    display: block;
+}
+
+/* Style the checkmark/indicator */
+.container .checkmark:after {
+    left: 9px;
+    top: 5px;
+    width: 5px;
+    height: 10px;
+    border: solid #e90818;
+    border-width: 0 3px 3px 0;
+    -webkit-transform: rotate(45deg);
+    -ms-transform: rotate(45deg);
+    transform: rotate(45deg) scale(2.1);
+    box-shadow: 1px 1px 1px black;
+    border-radius: 15%;
+}
+
+.btn-col {
+    max-width: 200px;
+}
+
+.btn {
+    width: 200px;
+    font-size: 25px;
+    height: 40px;
+    border-style: ridge;
+    border-image-source: linear-gradient(45deg, rgb(255, 254, 251) 0%, rgb(204, 138, 10) 18%, rgb(26, 21, 2) 37%, rgb(121, 81, 9) 74%, rgb(255, 255, 255) 99%);
+    border-image-slice: 1;
+    box-shadow: 0px 0px 3px black;
+    border-inline-style: solid;
+    outline-style: double;
+    outline-color: #0000009f;
+    outline-offset: -4px;
+    color: white;
+    outline-width: 4px; 
+    background: linear-gradient(90deg, rgba(46,0,4,1) 0%, rgba(123,7,14,1) 50%, rgba(46,0,4,1) 100%);
+    margin-bottom: 10px;
+    box-shadow: 0px 0px 10px black;
+    cursor: pointer;
+}
+
+.col {
+
+}
+
+.col-left {
+      padding-left: 340px;
+}
+
+.col-center {
+      margin-left: -124px;
+}
+
+.col-right{
+    padding-right: 340px;
+}

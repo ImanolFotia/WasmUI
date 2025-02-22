@@ -6,32 +6,98 @@
 	<link rel="icon" href="../../media/aoe2/favicon.png" type="image/x-icon" />
 	<link rel="manifest" href="../../manifest.json">
 	<link rel="stylesheet" href="../../css/style.css">
+	<link rel="stylesheet" href="../../samples/aoe2-random/style.css">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<script type="text/javascript" src="../../js/wgpu.js"></script>
 
+	<script type="text/javascript" src="../../js/wgpu.js"></script>
+	<script type="text/javascript" src="../../js/ws.js"></script>
 	<style>
 		body {
 			height: 100vh;
-			width: 100wh;
+			width: 100vw;
 			background-image: url("../../media/aoe2/background.jpg") !important;
 		}
 	</style>
-
+	<script>
+		function spinClick() {
+			WasmContext["exports"].onClick_spin();
+		}
+	</script>
 </head>
 
 <body>
 	<script type="text/javascript" src="../../js/main.js"></script>
-
+	<div class="logo-container">
+		<img id="logo-background" src="../../media/aoe2/logo.png" />
+		<img id="logo" src="../../media/aoe2/logo.png" />
+	</div>
+	<div class="filter-container">
+		<div class="civ-container">
+			<div id="civ-1" class="civ-name">???</div>
+			<div id="civ-2" class="civ-name">???</div>
+			<div id="civ-3" class="civ-name">???</div>
+		</div>
+		<main id="not_available" class="error-message"
+			style="height: auto; color: #eee; text-shadow: 2px 2px 4px black;">
+			<h1 style="font-size: 45px;">Oops...</h1>
+			<p>Looks like WebGPU is not available on this browser.</p>
+			<p>Check here for ways to enable it: <a
+					href="https://github.com/gpuweb/gpuweb/wiki/Implementation-Status">https://github.com/gpuweb/gpuweb/wiki/Implementation-Status</a>
+			</p>
+		</main>
+	</div>
+	<div class="filter-panel">
+		<div class="col col-left">
+			<label class="container">No Elephants
+				<input id="elephants" type="checkbox" checked="checked">
+				<span class="checkmark"></span>
+			</label>
+			<label class="container">No Cannon Galleons
+				<input type="checkbox" id="cannons">
+				<span class="checkmark"></span>
+			</label>
+		</div>
+		<div class="col col-center btn-col">
+		<button onclick="WasmContext.exports.onClick_spin()" class="btn">Spin</button>
+		<button onclick="WasmContext.exports.onClick_reset()" class="btn">Reset</button>
+	</div>
+		<div class="col col-right">
+			<label class="container">America
+				<input id="input-america" type="checkbox" checked="checked">
+				<span class="checkmark"></span>
+			</label>
+			<label class="container">Europe
+				<input id="input-europe" type="checkbox" checked="checked">
+				<span class="checkmark"></span>
+			</label>
+			<label class="container">Asia
+				<input id="input-asia" type="checkbox" checked="checked">
+				<span class="checkmark"></span>
+			</label>
+			<label class="container">Africa
+				<input id="input-africa" type="checkbox" checked="checked">
+				<span class="checkmark"></span>
+			</label>
+		</div>
+	</div>
 	<canvas id="main_canvas"></canvas>
+
 </body>
 
 <script>
 
-window.onload = () => {
-		if(Context.Debug)
+	window.onload = () => {
+	    connect();
+		if (Context.Debug)
 			init("../../wasm/aoe2-random/aoe2-random.wasm");
 		else
 			init("aoe2-random.wasm");
+
+		if (GlobalGPUContext.context === null ||
+			GlobalGPUContext.context === undefined
+		) {
+			console.error("WebGPU is not available");
+		}
 	};
 
 </script>
