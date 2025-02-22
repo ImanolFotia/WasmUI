@@ -39,6 +39,10 @@ static float max(float a, float b) {
   return a;
 }
 
+static float clamp(float x, float a, float b) {
+  return min(max(x, a), b);
+}
+
 template <typename T>
 T cross(T a, T b) {
   return a.cross(b);
