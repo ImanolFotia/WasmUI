@@ -24,13 +24,13 @@ public:
   Math::vec2 m_pUvMultiplier = Math::vec2(1.0f);
   Math::vec3 size = Math::vec3(1.0f);
 
+    m_pMesh.Vertices[m_pMesh.num_vertices++] = vtx(v3(1.0f,0.0f, 1.0f) * 0.5f * size, v2(0.0f, 0.0f) * m_pUvMultiplier, v3(0.0f, 1.0f, 0.0f)); // top-right
     m_pMesh.Vertices[m_pMesh.num_vertices++] = vtx(v3(-1.0f,0.0f, -1.0f) * 0.5f * size, v2(1.0f, 1.0f) * m_pUvMultiplier, v3(0.0f, 1.0f, 0.0f)); // bottom-left
     m_pMesh.Vertices[m_pMesh.num_vertices++] = vtx(v3(1.0f,0.0f, -1.0f) * 0.5f * size, v2(0.0f, 1.0f) * m_pUvMultiplier, v3(0.0f, 1.0f, 0.0f)); // bottom-right
-    m_pMesh.Vertices[m_pMesh.num_vertices++] = vtx(v3(1.0f,0.0f, 1.0f) * 0.5f * size, v2(0.0f, 0.0f) * m_pUvMultiplier, v3(0.0f, 1.0f, 0.0f)); // top-right
     m_pMesh.Vertices[m_pMesh.num_vertices++] = vtx(v3(-1.0f,0.0f, 1.0f) * 0.5f * size, v2(1.0f, 0.0f) * m_pUvMultiplier, v3(0.0f, 1.0f, 0.0f)); // top-left
 
-    m_pMesh.addTriangle(2, 1, 0);
-    m_pMesh.addTriangle(0, 3, 2);
+    m_pMesh.addTriangle(0, 1, 2);
+    m_pMesh.addTriangle(0, 3, 1);
 
     std::printf("% vertices", m_pMesh.num_vertices);
 
