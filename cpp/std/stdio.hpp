@@ -208,7 +208,7 @@ int sprintf(char *buffer, const char *fmt, T val, Args &&...args) {
 }
 
 template <typename... Args>
-static void printOnElement(const char *id, const char *fmt, Args &&...args) {
+static void SetElementText(const char *id, const char *fmt, Args &&...args) {
   char buffer[4096];
   sprintf(buffer, fmt, args...);
   env_setelementtext(id, buffer);
