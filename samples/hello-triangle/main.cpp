@@ -13,6 +13,8 @@ extern "C" float trunc(float);
 extern "C" FILE fopen(JsString);
 extern "C" void fread(FILE, char *, size_t);
 
+const int sampleCount = 4;
+
 const char *vertexCode =
     R"(
     struct VertexOut {
@@ -53,28 +55,19 @@ using namespace wgpu;
 Device device{};
 Pipeline pipeline{};
 Queue queue{};
+Texture swapChainTexture{};
 
 FILE file;
 
 extern "C" void render_loop(size_t dt) {
-  /*char str[5];
-
-  str[0] = '0' + fmodf((dt / 1000), 10);
-  str[1] = '0' + fmodf((dt / 100), 10);
-  str[2] = '0' +  fmodf(dt / 10, 10);
-  str[3] = '0' + fmodf(dt, 10);
-  str[4] = 0;
-
-  print(str);*/
-  // float t = (float)dt;
-  //(void)t;
 
   CommandEncoder encoder = CreateCommandEncoder(device);
 
-  TextureView textureView = SwapChainGetCurrentTextureView();
+  TextureView textureView = CreateTextureView(swapChainTexture);//
 
   RenderPassColorAttachment colorAttachment;
   colorAttachment.view = textureView;
+  colorAttachment.resolveTarget = SwapChainGetCurrentTextureView(),
   colorAttachment.clearValue = {0.0f, 0.0f, 0.0, 1.0};
   colorAttachment.operations = {LoadOp::CLEAR, StoreOp::STORE};
 
@@ -114,10 +107,21 @@ int main(int argc, char** argv) {
       .layout = {},
       .vertex = {.module = vertexShader, .entryPoint = "main"},
       .primitive = {.topology = GPUPrimitiveTopology::TRIANGLE_LIST},
+      .multisample =  {
+        .count = sampleCount
+      },
       .fragment = {.module = fragmentShader,
                    .entryPoint = "main",
                    .targetCount = 1,
                    .targets = &target}};
+  
+  swapChainTexture = CreateTexture(device, {
+                  .size = {(int)getWindowWidth(), (int)getWindowHeight(), 0},
+                  .sampleCount = sampleCount,
+                  .dimension = TextureDimension::d2D,
+                  .format = (TextureFormat)GetPreferredCanvasFormat(),
+                  .usage = TextureUsage::RENDER_ATTACHMENT,
+              });
 
   pipeline = CreateRenderPipeline(device, info);
 

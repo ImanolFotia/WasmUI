@@ -276,20 +276,19 @@ int main(int argc, char **argv) {
   {
     void *data = BufferGetMappedRange(vtxBuffer, 0, cube_vertex_size);
     std::memcpy(data, (void *)cube.data().Vertices, cube_vertex_size);
-    BufferUnmap(vtxBuffer);
   }
+    BufferUnmap(vtxBuffer);
   {
     void *data = BufferGetMappedRange(idxBuffer, 0, cube_index_size);
     std::memcpy(data, (void *)cube.data().Indices, cube_index_size);
-    BufferUnmap(idxBuffer);
   }
+    BufferUnmap(idxBuffer);
   uniformBuffer = CreateBuffer(
       device,
       {.size = 80,
        .usage = (BufferUsage)(BufferUsage::UNIFORM | BufferUsage::COPY_DST),
        .mappedAtCreation = false});
 
-    BufferUnmap(uniformBuffer);
 
   cubeTexture =
       CreateTexture(device, {

@@ -9,7 +9,7 @@ extern "C" void request_animation_frame(void *);
 extern "C" FILE fopen(JsString);
 extern "C" void fread(FILE, char *, size_t);
 
-
+const int sampleCount = 4;
 
 const char *vertexCode =
     R"(
@@ -52,6 +52,7 @@ Buffer vtxBuffer{};
 Buffer uniformBuffer{};
 BindGroup bindGroup{};
 Texture depthBuffer{};
+Texture swapChainTexture{};
 
 Math::mat4 viewProj = {Math::vec4(0.936213, -0.323997, -0.325092, -0.324443),
                        Math::vec4(0.000000, 1.565988, -0.487639, -0.486664),
@@ -118,6 +119,9 @@ void build_pipeline() {
         .depthWriteEnabled = true,
         .depthCompare = CompareFunction::Less,
       },
+      .multisample =  {
+        .count = sampleCount
+      },
       .fragment = {.module = CreateShaderModule(device, fragmentCode),
                    .entryPoint = "main",
                    .targetCount = 1,
@@ -127,6 +131,7 @@ void build_pipeline() {
 
   depthBuffer = CreateTexture(device, {
     .size = {(int)getWindowWidth(), (int)getWindowHeight(), 0},
+                  .sampleCount = sampleCount,
     .dimension = TextureDimension::d2D,
     .format = TextureFormat::Depth24Plus,
     .usage = TextureUsage::RENDER_ATTACHMENT,
@@ -140,11 +145,12 @@ extern "C" void render_loop(float dt) {
   time += dt;
   CommandEncoder encoder = CreateCommandEncoder(device);
 
-  TextureView textureView = SwapChainGetCurrentTextureView();
+  TextureView textureView = CreateTextureView(swapChainTexture);// 
   TextureView depthView = CreateTextureView(depthBuffer);
 
   RenderPassColorAttachment colorAttachment;
   colorAttachment.view = textureView;
+  colorAttachment.resolveTarget = SwapChainGetCurrentTextureView();
   colorAttachment.clearValue = {0.094117f, 0.094117f, 0.094117, 1.0};
   colorAttachment.operations = {LoadOp::CLEAR, StoreOp::STORE};
 
@@ -217,6 +223,14 @@ int main(int argc, char** argv) {
   std::memcpy(data, (void *)cubeVertexArray, cubeVertexArraySize);
 
   BufferUnmap(vtxBuffer);
+
+  swapChainTexture = CreateTexture(device, {
+                  .size = {(int)getWindowWidth(), (int)getWindowHeight(), 0},
+                  .sampleCount = sampleCount,
+                  .dimension = TextureDimension::d2D,
+                  .format = (TextureFormat)GetPreferredCanvasFormat(),
+                  .usage = TextureUsage::RENDER_ATTACHMENT,
+              });
 
   build_pipeline();
 
