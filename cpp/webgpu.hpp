@@ -180,10 +180,10 @@ struct DepthStencilClearValue {
 };
 
 struct RenderPassColorAttachment {
-  TextureView view;
-  TextureView resolveTarget;
-  Operations operations;
-  Color clearValue;
+  TextureView view{};
+  TextureView resolveTarget{};
+  Operations operations{};
+  Color clearValue{};
 };
 
 struct RenderPassDepthStencilAttachment {
