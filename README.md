@@ -12,7 +12,8 @@ Don't make a pull request that introduces a dependency.
 ```make all```
 
 ## License
-GPLv3 License
+GPLv3 License  
+
 Copyright (C) 2026  Imanol Fotia
 
 This program is free software: you can redistribute it and/or modify
